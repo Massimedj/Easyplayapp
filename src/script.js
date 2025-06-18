@@ -955,7 +955,7 @@
                 </p>
                 <div class="text-center">
                     <button id="validateForDirectEliminationBtn"
-                            class="bg-purple-600 text-white py-2 px-6 rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 shadow-md transition ease-in-out duration-150">
+                            class="bg-purple-600 text-white py-2 px-6 rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:bg-purple-700 focus:ring-offset-2 shadow-md transition ease-in-out duration-150">
                         Valider toutes les équipes pour l'élimination directe
                     </button>
                 </div>
