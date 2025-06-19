@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EasyPlay - Gestionnaire de Tournois Sportifs</title>
+    <title>EasyPlay - Gestionnaire de Tournoi Sportif</title>
     <!-- Favicon -->
-    <!-- Chemin corrigé pour l'icône : suppose que 'images' est un dossier au même niveau que le dossier contenant 'index.html' -->
-    <link rel="icon" href="Images/Logo_EsayPlay.png" type="image/png">
+    <link rel="icon" href="../images/Logo_EsayPlay.png" type="image/png">
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Font Awesome CDN pour les icônes -->
@@ -102,11 +101,10 @@
 </head>
 <body class="bg-gray-100 min-h-screen flex flex-col">
     <!-- Barre de navigation verticale -->
-    <nav class="bg-blue-500 shadow-lg fixed top-0 left-0 h-screen w-40 z-10 p-1 flex flex-col items-center">
+    <nav class="bg-blue-700/90 shadow-lg fixed top-0 left-0 h-screen w-40 z-10 p-1 flex flex-col items-center">
         <!-- Emplacement du logo en haut de la barre de navigation -->
         <a href="#home" class="mb-8 mt-4">
-            <!-- Chemin corrigé pour l'image du logo -->
-            <img src="Images/Logo_EsayPlay.png"
+            <img src="../images/Logo_EsayPlay.png"
                  alt="Logo EasyPlay"
                  class="h-20 w-auto rounded-md object-cover"
                  onerror="this.onerror=null;this.src='https://placehold.co/100x80/cccccc/333333?text=Logo';"
@@ -146,14 +144,15 @@
     <!-- Conteneur principal de l'application -->
     <main id="app-container" class="relative z-0 pl-48 flex-grow">
         <!-- Le contenu des pages sera rendu ici par JavaScript -->
-        <div class="flex-grow w-full max-w-4xl mx-auto py-8">
+        <!-- C'est cette ligne que vous devez modifier -->
+        <div class="flex-grow w-full max-w-6xl mx-auto py-8">
             <!-- Ce div sera rempli par le JavaScript -->
         </div>
     </main>
 
     <!-- Pied de page -->
-    <footer class="bg-blue-500 text-white p-1 text-center text-sm">
-        © 2025 EasyPlay. Tous droits réservés. Fait par Massi ⵣ. Pour toute question, contactez-moi à <a href="mailto:massi.medj@yahoo.fr" class="text-blue-800 hover:underline">massi.medj@yahoo.fr</a>.
+    <footer class="bg-blue-800 text-white p-6 text-center text-sm">
+        © 2025 EasyPlay. Tous droits réservés. Fait par Massi ⵣ. Pour toute question, contactez-moi à <a href="mailto:massi.medj@yahoo.fr" class="text-blue-200 hover:underline">massi.medj@yahoo.fr</a>.
     </footer>
 
     <!-- Modale globale pour les confirmations et messages -->
@@ -178,7 +177,6 @@
 
     <!-- Script principal de l'application -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
-    <!-- Chemin corrigé pour le script.js -->
-    <script src="src/script.js"></script>
+    <script src="./script.js"></script>
 </body>
 </html>
