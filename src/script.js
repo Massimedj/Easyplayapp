@@ -441,7 +441,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
                     <div class="bg-blue-50 p-6 rounded-lg shadow-md border border-blue-200">
                         <h2 class="text-2xl font-semibold text-blue-800 mb-3 flex items-center">
-                            <i class="fas fa-users mr-3 text-blue-600"></i> Gestion Simplifiée
+                            <i class="fas fa-cogs mr-3 text-blue-600"></i> Gestion Simplifiée
                         </h2>
                         <p class="text-blue-700">
                             Ajoutez, modifiez ou supprimez vos équipes et définissez leurs niveaux initiaux.
@@ -459,7 +459,7 @@
                     </div>
                     <div class="bg-purple-50 p-6 rounded-lg shadow-md border border-purple-200">
                         <h2 class="text-2xl font-semibold text-purple-800 mb-3 flex-center">
-                            <i class="fas fa-list-ol mr-3 text-purple-600"></i> Classements Automatiques
+                            <i class="fas fa-calculator mr-3 text-purple-600"></i> Classements Automatiques
                         </h2>
                         <p class="text-purple-700">
                             Saisissez les scores et laissez l'application calculer les classements en temps réel.
@@ -634,8 +634,8 @@
                 levelCountsHtml = '<p class="mt-2 text-sm text-gray-600">Aucun niveau d\'équipe défini.</p>';
             }
             // Find the element for level counts and update it
-            const existingLevelCountsDiv = document.querySelector('section.p-6.bg-gray-50.rounded-lg.border.border-gray-200 div.mt-2.text-sm.text-gray-600.space-y-1');
-            if (existingLevelCountsDiv) {
+            const existingLevelCountsDiv = document.querySelector('#teamsList').previousElementSibling; // Assuming it's the element right before teamsList
+            if (existingLevelCountsDiv && existingLevelCountsDiv.tagName === 'DIV' && existingLevelCountsDiv.classList.contains('space-y-1')) {
                  existingLevelCountsDiv.outerHTML = levelCountsHtml; // Replace the entire div to update content
             } else {
                 // Fallback if the structure changes or if initially empty
@@ -1596,8 +1596,9 @@
         }
 
         /**
-         * Updates the scores displayed in the secondary groups preview without re-shuffling teams.
-         * This is useful if brassage phase scores have been updated after the preview was generated.
+         * Met à jour uniquement l'affichage des scores et différentiels de score
+         * dans la prévisualisation des groupes secondaires, sans reformer les groupes.
+         * Cette fonction est appelée par le nouveau bouton "Actualiser les Scores".
          */
         function updateSecondaryGroupsPreviewDisplayOnly() {
             if (Object.keys(currentSecondaryGroupsPreview).length === 0) {
@@ -1623,7 +1624,7 @@
                         }
                     }
                 });
-                // Re-sort the teams within each preview group to maintain rank order
+                // Re-sort the teams within each preview group to reflect new rankings
                 currentSecondaryGroupsPreview[groupName].sort((a, b) => b.totalPoints - a.totalPoints || b.totalDiffScore - a.totalDiffScore);
             }
 
@@ -1742,188 +1743,189 @@
          * Unified function to generate pools for any brassage phase.
          * @param {string} phaseIdToUpdate ID of the phase whose pools are to be generated.
          */
-        function generatePoolsForPhase(phaseIdToUpdate) {
-            console.log("--- DEBUG: Entering generatePoolsForPhase ---");
-            console.log(`DEBUG: Requested Phase ID to Update: ${phaseIdToUpdate}`);
+    function generatePoolsForPhase(phaseIdToUpdate) {
+        console.log("--- DEBUG: Entering generatePoolsForPhase ---");
+        console.log(`DEBUG: Requested Phase ID to Update: ${phaseIdToUpdate}`);
 
-            if (allTeams.length === 0) {
-                showMessage(messageElement, "Aucune équipe n'a été ajoutée. Veuillez gérer les équipes d'abord.", true);
-                console.log("DEBUG: No teams available, exiting.");
-                return;
-            }
-
-            const requestedTeamsPerPool = parseInt(numPoolsInput.value);
-
-            if (isNaN(requestedTeamsPerPool) || requestedTeamsPerPool < 1) {
-                showMessage(messageElement, "Veuillez entrer un nombre valide d'équipes par poule (au moins 1).", true);
-                console.log("DEBUG: Invalid teams per pool (less than 1), exiting.");
-                return;
-            }
-
-            if (requestedTeamsPerPool > 10) {
-                showMessage(messageElement, "Le nombre d'équipes par poule ne peut pas dépasser 10 (le niveau maximum des équipes).", true);
-                console.log("DEBUG: Teams per pool exceeds max level (10), exiting.");
-                return;
-            }
-
-            const phaseToGenerate = allBrassagePhases.find(p => p.id === phaseIdToUpdate);
-            if (!phaseToGenerate) {
-                showMessage(messageElement, "Erreur: Phase à générer introuvable.", true);
-                console.log(`DEBUG: Phase with ID ${phaseIdToUpdate} not found, exiting.`);
-                return;
-            }
-            console.log(`DEBUG: Phase to generate found: ${phaseToGenerate.name} (Type: ${phaseToGenerate.type})`);
-
-            // Get sorted list of actual brassage phases (initial and secondary)
-            const sortedActualBrassagePhases = allBrassagePhases
-                .filter(p => p.type === PHASE_TYPE_INITIAL || p.type === PHASE_TYPE_SECONDARY_BRASSAGE)
-                .sort((a, b) => a.timestamp - b.timestamp);
-            
-            const currentPhaseIndexInSorted = sortedActualBrassagePhases.findIndex(p => p.id === phaseIdToUpdate);
-            // Check if this is the absolute first brassage phase created by chronological order
-            const isFirstActualBrassagePhaseOverall = currentPhaseIndexInSorted === 0;
-            console.log(`DEBUG: Is this the first *overall* brassage phase? ${isFirstActualBrassagePhaseOverall}`);
-
-            // Get the user's selected pool generation basis directly from localStorage
-            // We read it fresh every time to avoid caching issues.
-            const selectedBasis = localStorage.getItem(POOL_GENERATION_BASIS_KEY);
-            console.log(`DEBUG: User's selected basis from localStorage (POOL_GENERATION_BASIS_KEY): "${selectedBasis}"`);
-
-            let effectiveUseInitialLevels;
-
-            if (isFirstActualBrassagePhaseOverall) {
-                // The very first brassage phase (initial or secondary, though usually initial) MUST use initial levels.
-                effectiveUseInitialLevels = true;
-                showMessage(basisMessageElement, "La toute première phase de brassage utilise toujours les niveaux initiaux des équipes.", false);
-                console.log("DEBUG: This is the first *overall* brassage phase. Forcing effectiveUseInitialLevels = true.");
-            } else if (phaseToGenerate.type === PHASE_TYPE_SECONDARY_BRASSAGE) {
-                // Secondary brassage phases always derive from previous results.
-                effectiveUseInitialLevels = false;
-                console.log("DEBUG: Phase type is SECONDARY_BRASSAGE. Forcing effectiveUseInitialLevels = false.");
-            } else if (phaseToGenerate.type === PHASE_TYPE_INITIAL) {
-                // For subsequent initial brassage phases, respect the user's chosen basis.
-                effectiveUseInitialLevels = (selectedBasis === 'initialLevels');
-                console.log(`DEBUG: Phase type is INITIAL_BRASSAGE (not first overall). EffectiveUseInitialLevels based on selectedBasis: ${effectiveUseInitialLevels}.`);
-            } else {
-                // Fallback for any other unexpected phase type, default to initial levels or throw error
-                effectiveUseInitialLevels = true; // Safe default
-                console.warn(`DEBUG: Unknown phase type encountered (${phaseToGenerate.type}). Defaulting to initial levels.`);
-            }
-
-            console.log(`DEBUG: Final effectiveUseInitialLevels for this generation attempt: ${effectiveUseInitialLevels}`);
-
-            // Now, apply the check for previous results only if the effective method for THIS phase is 'previousResults'
-            if (!effectiveUseInitialLevels) { // This means the effective method for this generation is 'previousResults'
-                const previousBrassagePhase = sortedActualBrassagePhases[currentPhaseIndexInSorted - 1];
-                console.log(`DEBUG: Effective method is 'previousResults'. Checking previous phase completion.`);
-                if (!previousBrassagePhase) {
-                    showMessage(messageElement, "Erreur logique: La phase précédente est introuvable pour une génération basée sur les résultats.", true);
-                    console.log("DEBUG: Previous phase not found for results-based generation, exiting.");
-                    return;
-                }
-                console.log(`DEBUG: Previous phase to check: ${previousBrassagePhase.name} (ID: ${previousBrassagePhase.id})`);
-                if (!isBrassagePhaseComplete(previousBrassagePhase)) {
-                    showMessage(messageElement, `Veuillez compléter tous les scores de la phase précédente ("${escapeHtml(previousBrassagePhase.name)}") avant de générer les poules basées sur les résultats.`, true);
-                    console.log(`DEBUG: Previous phase (${previousBrassagePhase.name}) is NOT complete, exiting.`);
-                    return;
-                }
-                console.log(`DEBUG: Previous phase (${previousBrassagePhase.name}) IS complete.`);
-            }
-            
-            // Determine the actual teams to use for generation
-            const teamsForGeneration = effectiveUseInitialLevels ? allTeams : (function() {
-                const globalRankings = getGlobalRankings(allTeams, allBrassagePhases);
-                const teamsWithScores = globalRankings.filter(r => r.totalPoints !== 0 || r.totalDiffScore !== 0).map(r => ({
-                    id: r.teamObject.id,
-                    name: r.teamObject.name,
-                    level: r.teamObject.level,
-                    totalPoints: r.totalPoints,
-                    totalDiffScore: r.totalDiffScore
-                }));
-                // If there are no teams with scores, fall back to all teams but warn
-                if (teamsWithScores.length === 0 && !isFirstActualBrassagePhaseOverall) {
-                    showMessage(messageElement, "Aucune équipe avec des scores enregistrés pour générer des poules basées sur les résultats précédents. Les niveaux initiaux seront utilisés.", true);
-                    console.log("DEBUG: No teams with scores for results-based generation, falling back to all teams.");
-                    return allTeams; // Fallback
-                }
-                console.log(`DEBUG: Teams for generation based on scores (${teamsWithScores.length} teams):`, teamsWithScores.map(t => `${t.name} (Pts: ${t.totalPoints}, Diff: ${t.totalDiffScore})`).join(', '));
-                return teamsWithScores.length > 0 ? teamsWithScores : allTeams; // Use teamsWithScores if available, else allTeams
-            })();
-
-            if (teamsForGeneration.length === 0) {
-                 showMessage(messageElement, "Aucune équipe disponible pour générer des poules.", true);
-                 console.log("DEBUG: No teams for generation, exiting.");
-                 return;
-            }
-            if (teamsForGeneration.length < requestedTeamsPerPool) {
-                showMessage(messageElement, `Pas assez d'équipes (${teamsForGeneration.length}) pour former des poules de ${requestedTeamsPerPool} équipes. Réduisez le nombre d'équipes par poule ou ajoutez des équipes.` + (effectiveUseInitialLevels ? "" : " Assurez-vous d'avoir suffisamment d'équipes avec des scores valides."), true);
-                console.log("DEBUG: Not enough teams for requested pools, exiting.");
-                return;
-            }
-
-
-            const MAX_ATTEMPTS = 20; // Number of times to try generating pools
-            let bestPools = null;
-            let minRepetitions = Infinity;
-            let bestRemainingTeamsCount = Infinity;
-            console.log(`DEBUG: Starting pool generation attempts (max ${MAX_ATTEMPTS})...`);
-
-            for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-                // Generate and evaluate potential pools
-                const result = generateAndEvaluatePools(phaseToGenerate.type, teamsForGeneration, requestedTeamsPerPool, messageElement, phaseIdToUpdate);
-                
-                if (result.pools) {
-                    // Prioritize fewer repetitions, then fewer remaining teams
-                    if (result.repetitions < minRepetitions) {
-                        minRepetitions = result.repetitions;
-                        bestPools = result.pools;
-                        bestRemainingTeamsCount = result.remainingTeamsCount;
-                    } else if (result.repetitions === minRepetitions && result.remainingTeamsCount < bestRemainingTeamsCount) {
-                        // If repetitions are the same, prefer fewer unassigned teams
-                        minRepetitions = result.repetitions; // Redundant but for clarity
-                        bestPools = result.pools;
-                        bestRemainingTeamsCount = result.remainingTeamsCount;
-                    }
-                    
-                    // If we found a perfect solution (0 repetitions), no need to try further
-                    if (minRepetitions === 0 && bestRemainingTeamsCount === 0) { // Also ensure all teams assigned
-                         console.log(`DEBUG: Optimal solution found in ${attempt + 1} attempts.`);
-                         break;
-                    }
-                }
-            }
-
-            if (!bestPools) {
-                showMessage(messageElement, "Impossible de générer des poules valides après plusieurs tentatives. Vérifiez le nombre d'équipes et les paramètres.", true);
-                console.log("DEBUG: Failed to generate valid pools after all attempts, exiting.");
-                return;
-            }
-
-            const phaseIndex = allBrassagePhases.findIndex(p => p.id === phaseIdToUpdate);
-            if (phaseIndex > -1) {
-                allBrassagePhases[phaseIndex].pools = bestPools;
-                allBrassagePhases[phaseIndex].generated = true; 
-                saveBrassagePhases(); // This will rebuild the matchOccurrenceMap
-                renderPhaseHistory();
-                renderPoolsWithCurrentSettings(bestPools, allBrassagePhases[phaseIndex].name, phaseIdToUpdate);
-
-                let successMessage = bestPools.length + " poule(s) générée(s) avec succès pour cette phase ! ";
-                if (minRepetitions > 0) {
-                    successMessage += `Ceci a entraîné ${minRepetitions} rencontre(s) répétée(s) (minimum trouvé après ${MAX_ATTEMPTS} tentatives).`;
-                } else {
-                    successMessage += `Aucune rencontre répétée détectée dans cette phase.`;
-                }
-                if (bestRemainingTeamsCount > 0) {
-                    successMessage += ` ${bestRemainingTeamsCount} équipe(s) n'ont pas pu être assignée(s) à une poule.`;
-                }
-                showMessage(messageElement, successMessage);
-                console.log("DEBUG: Pool generation successful.");
-            } else {
-                showMessage(messageElement, "Erreur: Phase à générer introuvable après les vérifications.", true);
-                console.log("DEBUG: Phase not found after final checks, exiting.");
-            }
-            console.log("--- DEBUG: Exiting generatePoolsForPhase ---");
+        if (allTeams.length === 0) {
+            showMessage(messageElement, "Aucune équipe n'a été ajoutée. Veuillez gérer les équipes d'abord.", true);
+            console.log("DEBUG: No teams available, exiting.");
+            return;
         }
+
+        const requestedTeamsPerPool = parseInt(numPoolsInput.value);
+
+        if (isNaN(requestedTeamsPerPool) || requestedTeamsPerPool < 1) {
+            showMessage(messageElement, "Veuillez entrer un nombre valide d'équipes par poule (au moins 1).", true);
+            console.log("DEBUG: Invalid teams per pool (less than 1), exiting.");
+            return;
+        }
+
+        if (requestedTeamsPerPool > 10) {
+            showMessage(messageElement, "Le nombre d'équipes par poule ne peut pas dépasser 10 (le niveau maximum des équipes).", true);
+            console.log("DEBUG: Teams per pool exceeds max level (10), exiting.");
+            return;
+        }
+
+        const phaseToGenerate = allBrassagePhases.find(p => p.id === phaseIdToUpdate);
+        if (!phaseToGenerate) {
+            showMessage(messageElement, "Erreur: Phase à générer introuvable.", true);
+            console.log(`DEBUG: Phase with ID ${phaseIdToUpdate} not found, exiting.`);
+            return;
+        }
+        console.log(`DEBUG: Phase to generate found: ${phaseToGenerate.name} (Type: ${phaseToGenerate.type})`);
+
+        // Get sorted list of actual brassage phases (initial and secondary)
+        const sortedActualBrassagePhases = allBrassagePhases
+            .filter(p => p.type === PHASE_TYPE_INITIAL || p.type === PHASE_TYPE_SECONDARY_BRASSAGE)
+            .sort((a, b) => a.timestamp - b.timestamp);
+        
+        const currentPhaseIndexInSorted = sortedActualBrassagePhases.findIndex(p => p.id === phaseIdToUpdate);
+        // Check if this is the absolute first brassage phase created by chronological order
+        const isFirstActualBrassagePhaseOverall = currentPhaseIndexInSorted === 0;
+        console.log(`DEBUG: Is this the first *overall* brassage phase? ${isFirstActualBrassagePhaseOverall}`);
+
+        // Get the user's selected pool generation basis directly from localStorage
+        // We read it fresh every time to avoid caching issues.
+        const selectedBasis = localStorage.getItem(POOL_GENERATION_BASIS_KEY);
+        console.log(`DEBUG: User's selected basis from localStorage (POOL_GENERATION_BASIS_KEY): "${selectedBasis}"`);
+
+        let effectiveUseInitialLevels;
+
+        if (isFirstActualBrassagePhaseOverall) {
+            // The very first brassage phase (initial or secondary, though usually initial) MUST use initial levels.
+            effectiveUseInitialLevels = true;
+            showMessage(basisMessageElement, "La toute première phase de brassage utilise toujours les niveaux initiaux des équipes.", false);
+            console.log("DEBUG: This is the first *overall* brassage phase. Forcing effectiveUseInitialLevels = true.");
+        } else if (phaseToGenerate.type === PHASE_TYPE_SECONDARY_BRASSAGE) {
+            // Secondary brassage phases always derive from previous results.
+            effectiveUseInitialLevels = false;
+            console.log("DEBUG: Phase type is SECONDARY_BRASSAGE. Forcing effectiveUseInitialLevels = false.");
+        } else if (phaseToGenerate.type === PHASE_TYPE_INITIAL) {
+            // For subsequent initial brassage phases, respect the user's chosen basis.
+            effectiveUseInitialLevels = (selectedBasis === 'initialLevels');
+            console.log(`DEBUG: Phase type is INITIAL_BRASSAGE (not first overall). EffectiveUseInitialLevels based on selectedBasis: ${effectiveUseInitialLevels}.`);
+        } else {
+            // Fallback for any other unexpected phase type, default to initial levels or throw error
+            effectiveUseInitialLevels = true; // Safe default
+            console.warn(`DEBUG: Unknown phase type encountered (${phaseToGenerate.type}). Defaulting to initial levels.`);
+        }
+
+        console.log(`DEBUG: Final effectiveUseInitialLevels for this generation attempt: ${effectiveUseInitialLevels}`);
+
+        // Now, apply the check for previous results only if the effective method for THIS phase is 'previousResults'
+        if (!effectiveUseInitialLevels) { // This means the effective method for this generation is 'previousResults'
+            const previousBrassagePhase = sortedActualBrassagePhases[currentPhaseIndexInSorted - 1];
+            console.log(`DEBUG: Effective method is 'previousResults'. Checking previous phase completion.`);
+            if (!previousBrassagePhase) {
+                showMessage(messageElement, "Erreur logique: La phase précédente est introuvable pour une génération basée sur les résultats.", true);
+                console.log("DEBUG: Previous phase not found for results-based generation, exiting.");
+                return;
+            }
+            console.log(`DEBUG: Previous phase to check: ${previousBrassagePhase.name} (ID: ${previousBrassagePhase.id})`);
+            if (!isBrassagePhaseComplete(previousBrassagePhase)) {
+                showMessage(messageElement, `Veuillez compléter tous les scores de la phase précédente ("${escapeHtml(previousBrassagePhase.name)}") avant de générer les poules basées sur les résultats.`, true);
+                console.log(`DEBUG: Previous phase (${previousBrassagePhase.name}) is NOT complete, exiting.`);
+                return;
+            }
+            console.log(`DEBUG: Previous phase (${previousBrassagePhase.name}) IS complete.`);
+        }
+        
+        // Determine the actual teams to use for generation
+        const teamsForGeneration = effectiveUseInitialLevels ? allTeams : (function() {
+            const globalRankings = getGlobalRankings(allTeams, allBrassagePhases);
+            const teamsWithScores = globalRankings.filter(r => r.totalPoints !== 0 || r.totalDiffScore !== 0).map(r => ({
+                id: r.teamObject.id,
+                name: r.teamObject.name,
+                level: r.teamObject.level,
+                totalPoints: r.totalPoints,
+                totalDiffScore: r.totalDiffScore
+            }));
+            // If there are no teams with scores, fall back to all teams but warn
+            if (teamsWithScores.length === 0 && !isFirstActualBrassagePhaseOverall) {
+                showMessage(messageElement, "Aucune équipe avec des scores enregistrés pour générer des poules basées sur les résultats précédents. Les niveaux initiaux seront utilisés.", true);
+                console.log("DEBUG: No teams with scores for results-based generation, falling back to all teams.");
+                return allTeams; // Fallback
+            }
+            console.log(`DEBUG: Teams for generation based on scores (${teamsWithScores.length} teams):`, teamsWithScores.map(t => `${t.name} (Pts: ${t.totalPoints}, Diff: ${t.totalDiffScore})`).join(', '));
+            return teamsWithScores.length > 0 ? teamsWithScores : allTeams; // Use teamsWithScores if available, else allTeams
+        })();
+
+        if (teamsForGeneration.length === 0) {
+             showMessage(messageElement, "Aucune équipe disponible pour générer des poules.", true);
+             console.log("DEBUG: No teams for generation, exiting.");
+             return;
+        }
+        if (teamsForGeneration.length < requestedTeamsPerPool) {
+            showMessage(messageElement, `Pas assez d'équipes (${teamsForGeneration.length}) pour former des poules de ${requestedTeamsPerPool} équipes. Réduisez le nombre d'équipes par poule ou ajoutez des équipes.` + (effectiveUseInitialLevels ? "" : " Assurez-vous d'avoir suffisamment d'équipes avec des scores valides."), true);
+            console.log("DEBUG: Not enough teams for requested pools, exiting.");
+            return;
+        }
+
+
+        const MAX_ATTEMPTS = 20; // Number of times to try generating pools
+        let bestPools = null;
+        let minRepetitions = Infinity;
+        let bestRemainingTeamsCount = Infinity;
+        console.log(`DEBUG: Starting pool generation attempts (max ${MAX_ATTEMPTS})...`);
+
+        for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+            // Generate and evaluate potential pools
+            const result = generateAndEvaluatePools(phaseToGenerate.type, teamsForGeneration, requestedTeamsPerPool, messageElement, phaseIdToUpdate);
+            
+            if (result.pools) {
+                // Prioritize fewer repetitions, then fewer remaining teams
+                if (result.repetitions < minRepetitions) {
+                    minRepetitions = result.repetitions;
+                    bestPools = result.pools;
+                    bestRemainingTeamsCount = result.remainingTeamsCount;
+                } else if (result.repetitions === minRepetitions && result.remainingTeamsCount < bestRemainingTeamsCount) {
+                    // If repetitions are the same, prefer fewer unassigned teams
+                    minRepetitions = result.repetitions; // Redundant but for clarity
+                    bestPools = result.pools;
+                    bestRemainingTeamsCount = result.remainingTeamsCount;
+                }
+                
+                // If we found a perfect solution (0 repetitions), no need to try further
+                if (minRepetitions === 0 && bestRemainingTeamsCount === 0) { // Also ensure all teams assigned
+                     console.log(`DEBUG: Optimal solution found in ${attempt + 1} attempts.`);
+                     break;
+                }
+            }
+        }
+
+        if (!bestPools) {
+            showMessage(messageElement, "Impossible de générer des poules valides après plusieurs tentatives. Vérifiez le nombre d'équipes et les paramètres.", true);
+            console.log("DEBUG: Failed to generate valid pools after all attempts, exiting.");
+            return;
+        }
+
+        const phaseIndex = allBrassagePhases.findIndex(p => p.id === phaseIdToUpdate);
+        if (phaseIndex > -1) {
+            allBrassagePhases[phaseIndex].pools = bestPools;
+            allBrassagePhases[phaseIndex].generated = true; // Corrected: 'allBrassagePhasess' -> 'allBrassagePhases'
+            saveBrassagePhases(); // This will rebuild the matchOccurrenceMap
+            renderPhaseHistory();
+            renderPoolsWithCurrentSettings(bestPools, allBrassagePhases[phaseIndex].name, phaseIdToUpdate);
+
+            let successMessage = bestPools.length + " poule(s) générée(s) avec succès pour cette phase ! ";
+            if (minRepetitions > 0) {
+                successMessage += `Ceci a entraîné ${minRepetitions} rencontre(s) répétée(s) (minimum trouvé après ${MAX_ATTEMPTS} tentatives).`;
+            } else {
+                successMessage += `Aucune rencontre répétée détectée dans cette phase.`;
+            }
+            if (bestRemainingTeamsCount > 0) {
+                successMessage += ` ${bestRemainingTeamsCount} équipe(s) n'ont pas pu être assignée(s) à une poule.`;
+            }
+            showMessage(messageElement, successMessage);
+            console.log("DEBUG: Pool generation successful.");
+        } else {
+            showMessage(messageElement, "Erreur: Phase à générer introuvable après les vérifications.", true);
+            console.log("DEBUG: Phase not found after final checks, exiting.");
+        }
+        console.log("--- DEBUG: Exiting generatePoolsForPhase ---");
+    }
+
 
 
         // Renommage de la fonction `previewSecondaryGroups` en `_performSecondaryGroupsPreview`
