@@ -3546,24 +3546,6 @@
         // Attacher les gestionnaires d'événements pour les boutons de la modale globale
         modalCancelBtn.addEventListener('click', hideModal);
 
-        // Ajout de la transparence à la barre de navigation lors du défilement
-        const navBar = document.querySelector('nav');
-        let isScrolled = false;
-        window.addEventListener('scroll', () => {
-            if (window.scrollY > 0) {
-                if (!isScrolled) {
-                    navBar.classList.add('bg-blue-700/70', 'transition-colors', 'duration-300'); // Plus transparent
-                    navBar.classList.remove('bg-blue-700/90');
-                    isScrolled = true;
-                }
-            } else {
-                if (isScrolled) {
-                    navBar.classList.remove('bg-blue-700/70');
-                    navBar.classList.add('bg-blue-700/90'); // Moins transparent
-                    isScrolled = false;
-                }
-            }
-        });
     });
 
 })();
