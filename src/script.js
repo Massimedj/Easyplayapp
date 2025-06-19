@@ -430,7 +430,7 @@
             <div class="max-w-5xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
                 <h1 class="text-4xl font-extrabold text-center text-gray-900 mb-8 leading-tight">
                     Marre des casse-têtes<img src="Images/explosion.png" alt="emoji casse-tête" class="inline-block w-12 h-12 align-middle mx-1">pour organiser vos tournois ?<br>
-                    Cette App est là pour simplifier la vie des organisateurs sportifs ! <img src="Images/content.png" alt="emoji casse-tête" class="inline-block w-15 h-12 align-middle mx-1">
+                    Cette App est là pour simplifier la vie des organisateurs de tournois ! <img src="Images/content.png" alt="emoji casse-tête" class="inline-block w-15 h-12 align-middle mx-1">
                 </h1>
 
                 <p class="text-xl text-gray-700 text-center mb-12">
@@ -492,7 +492,7 @@
                             </ul>
                         </li>
                         <li>
-                            <strong class="text-blue-700">Phases de Brassage :</strong> Tous les points et scores de tous les matchs joués dans les phases de brassage précédentes sont <strong class="bg-gray-100">intégralement pris en compte</strong> pour la génération des poules des phases de brassage suivantes et pour le classement général.
+                            <strong class="text-blue-700">Phases de Brassage :</strong> Tous les points et scores de tous les matchs joués dans les phases de brassage précédentes peuvent être, au choix,<strong class="bg-gray-100">intégralement pris en compte</strong> pour la génération des poules des phases de brassage suivantes et pour le classement général.
                         </li>
                         <li>
                             <strong class="text-blue-700">Classement Éliminatoire :</strong> Le classement utilisé pour la phase éliminatoire est basé sur le <strong class="bg-gray-100">cumul de tous les points et scores</strong> des phases de brassage initiales et secondaires terminées, assurant une progression juste des meilleures équipes.
