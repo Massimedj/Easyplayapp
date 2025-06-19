@@ -427,7 +427,7 @@
 
     function renderHomePage() {
         APP_CONTAINER.innerHTML = `
-            <div class="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+            <div class="max-w-5xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
                 <h1 class="text-4xl font-extrabold text-center text-gray-900 mb-8 leading-tight">
                     Marre des casse-têtes pour organiser vos tournois ?<br>
                     Cette App est là pour simplifier la vie des organisateurs sportifs ! 🎉
