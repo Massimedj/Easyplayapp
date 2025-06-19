@@ -492,10 +492,10 @@
                             </ul>
                         </li>
                         <li>
-                            <strong class="text-blue-700">Phases de Brassage :</strong> Tous les points et scores de tous les matchs joués dans les phases de brassage précédentes sont **intégralement pris en compte** pour la génération des poules des phases de brassage suivantes et pour le classement général.
+                            <strong class="text-blue-700">Phases de Brassage :</strong> Tous les points et scores de tous les matchs joués dans les phases de brassage précédentes sont <strong class="bg-gray-100">intégralement pris en compte</strong> pour la génération des poules des phases de brassage suivantes et pour le classement général.
                         </li>
                         <li>
-                            <strong class="text-blue-700">Classement Éliminatoire :</strong> Le classement utilisé pour la phase éliminatoire est basé sur le **cumul de tous les points et scores** des phases de brassage initiales et secondaires terminées, assurant une progression juste des meilleures équipes.
+                            <strong class="text-blue-700">Classement Éliminatoire :</strong> Le classement utilisé pour la phase éliminatoire est basé sur le <strong class="bg-gray-100">cumul de tous les points et scores</strong> des phases de brassage initiales et secondaires terminées, assurant une progression juste des meilleures équipes.
                         </li>
                     </ul>
                     <p class="text-sm text-center italic text-gray-600 mt-4">
