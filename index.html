@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EasyPlay - Gestionnaire de Tournoi Sportif</title>
     <!-- Favicon -->
-    <link rel="icon" href="Images/Logo_EsayPlay.png" type="image/png">
+    <link rel="icon" href="../images/Logo_EsayPlay.png" type="image/png">
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Font Awesome CDN pour les icônes -->
@@ -100,10 +100,10 @@
 </head>
 <body class="bg-gray-100 min-h-screen flex flex-col">
     <!-- Barre de navigation verticale -->
-    <nav class="bg-blue-700/90 shadow-lg fixed top-0 left-0 h-screen w-48 z-10 transition-all duration-300 p-4 flex flex-col items-center">
+    <nav class="bg-blue-700/90 shadow-lg fixed top-0 left-0 h-screen w-40 z-10 transition-all duration-300 p-1 flex flex-col items-center">
         <!-- Emplacement du logo en haut de la barre de navigation -->
         <a href="#home" class="mb-8 mt-4">
-            <img src="Images/Logo_EsayPlay.png"
+            <img src="../images/Logo_EsayPlay.png"
                  alt="Logo EasyPlay"
                  class="h-20 w-auto rounded-md object-cover"
                  onerror="this.onerror=null;this.src='https://placehold.co/100x80/cccccc/333333?text=Logo';"
@@ -134,7 +134,7 @@
             </li>
             <li>
                 <a href="#classements" class="nav-link text-white hover:text-blue-200 transition duration-150 px-3 py-2 rounded-md flex items-center space-x-2">
-                    <i class="fas fa-list-ol"></i> <span>Classements</span>
+                    <i class="fas fa-list-ol"></i> <span>Classement</span>
                 </a>
             </li>
         </ul>
@@ -149,7 +149,7 @@
     </main>
 
     <!-- Pied de page -->
-    <footer class="bg-blue-800 text-white p-4 text-center text-sm ml-48">
+    <footer class="bg-blue-800 text-white p-42 text-center text-sm ml-52">
         © 2025 EasyPlay. Tous droits réservés. Fait par Massi ⵣ. Pour toute question, contactez-moi à <a href="mailto:massi.medj@yahoo.fr" class="text-blue-200 hover:underline">massi.medj@yahoo.fr</a>.
     </footer>
 
@@ -175,6 +175,6 @@
 
     <!-- Script principal de l'application -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
-    <script src="src\script.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>
