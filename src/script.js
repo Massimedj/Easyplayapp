@@ -430,18 +430,18 @@
             <div class="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
                 <h1 class="text-4xl font-extrabold text-center text-gray-900 mb-8 leading-tight">
                     Marre des casse-têtes pour organiser vos tournois ?<br>
-                    **EasyPlay** est là pour simplifier la vie des organisateurs sportifs ! 🎉
+                    Cette App est là pour simplifier la vie des organisateurs sportifs ! 🎉
                 </h1>
 
                 <p class="text-xl text-gray-700 text-center mb-12">
                     Gagnez du temps, réduisez les erreurs et offrez une expérience fluide à vos participants.
-                    **Concentrez-vous sur le jeu, on s'occupe du reste.**
+                    Concentrez-vous sur le jeu, on s'occupe du reste.
                 </p>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
                     <div class="bg-blue-50 p-6 rounded-lg shadow-md border border-blue-200">
                         <h2 class="text-2xl font-semibold text-blue-800 mb-3 flex items-center">
-                            <i class="fas fa-cogs mr-3 text-blue-600"></i> Gestion Simplifiée
+                            <i class="fas fa-users mr-3 text-blue-600"></i> Gestion Simplifiée
                         </h2>
                         <p class="text-blue-700">
                             Ajoutez, modifiez ou supprimez vos équipes et définissez leurs niveaux initiaux.
@@ -459,7 +459,7 @@
                     </div>
                     <div class="bg-purple-50 p-6 rounded-lg shadow-md border border-purple-200">
                         <h2 class="text-2xl font-semibold text-purple-800 mb-3 flex-center">
-                            <i class="fas fa-calculator mr-3 text-purple-600"></i> Classements Automatiques
+                            <i class="fas fa-list-ol mr-3 text-purple-600"></i> Classements Automatiques
                         </h2>
                         <p class="text-purple-700">
                             Saisissez les scores et laissez l'application calculer les classements en temps réel.
@@ -492,10 +492,10 @@
                             </ul>
                         </li>
                         <li>
-                            <strong class="text-blue-700">Phases de Brassage :</strong> Tous les points et scores de tous les matchs joués dans les phases de brassage précédentes sont **intégralement pris en compte** pour la génération des poules des phases de brassage suivantes et pour le classement général.
+                            <strong class="text-blue-700">Phases de Brassage :</strong> Tous les points et scores de tous les matchs joués dans les phases de brassage précédentes sont <strong class="bg-gray-100">intégralement pris en compte</strong> pour la génération des poules des phases de brassage suivantes et pour le classement général.
                         </li>
                         <li>
-                            <strong class="text-blue-700">Classement Éliminatoire :</strong> Le classement utilisé pour la phase éliminatoire est basé sur le **cumul de tous les points et scores** des phases de brassage initiales et secondaires terminées, assurant une progression juste des meilleures équipes.
+                            <strong class="text-blue-700">Classement Éliminatoire :</strong> Le classement utilisé pour la phase éliminatoire est basé sur le <strong class="bg-gray-100">cumul de tous les points et scores</strong> des phases de brassage initiales et secondaires terminées, assurant une progression juste des meilleures équipes.
                         </li>
                     </ul>
                     <p class="text-sm text-center italic text-gray-600 mt-4">
@@ -634,8 +634,8 @@
                 levelCountsHtml = '<p class="mt-2 text-sm text-gray-600">Aucun niveau d\'équipe défini.</p>';
             }
             // Find the element for level counts and update it
-            const existingLevelCountsDiv = document.querySelector('#teamsList').previousElementSibling; // Assuming it's the element right before teamsList
-            if (existingLevelCountsDiv && existingLevelCountsDiv.tagName === 'DIV' && existingLevelCountsDiv.classList.contains('space-y-1')) {
+            const existingLevelCountsDiv = document.querySelector('section.p-6.bg-gray-50.rounded-lg.border.border-gray-200 div.mt-2.text-sm.text-gray-600.space-y-1');
+            if (existingLevelCountsDiv) {
                  existingLevelCountsDiv.outerHTML = levelCountsHtml; // Replace the entire div to update content
             } else {
                 // Fallback if the structure changes or if initially empty
@@ -955,7 +955,7 @@
                 </p>
                 <div class="text-center">
                     <button id="validateForDirectEliminationBtn"
-                            class="bg-orange-600 text-white py-2 px-6 rounded-md hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 shadow-md transition ease-in-out duration-150">
+                            class="bg-purple-600 text-white py-2 px-6 rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 shadow-md transition ease-in-out duration-150">
                         Valider toutes les équipes pour l'élimination directe
                     </button>
                 </div>
@@ -1596,9 +1596,8 @@
         }
 
         /**
-         * Met à jour uniquement l'affichage des scores et différentiels de score
-         * dans la prévisualisation des groupes secondaires, sans reformer les groupes.
-         * Cette fonction est appelée par le nouveau bouton "Actualiser les Scores".
+         * Updates the scores displayed in the secondary groups preview without re-shuffling teams.
+         * This is useful if brassage phase scores have been updated after the preview was generated.
          */
         function updateSecondaryGroupsPreviewDisplayOnly() {
             if (Object.keys(currentSecondaryGroupsPreview).length === 0) {
@@ -1624,7 +1623,7 @@
                         }
                     }
                 });
-                // Re-sort the teams within each preview group to reflect new rankings
+                // Re-sort the teams within each preview group to maintain rank order
                 currentSecondaryGroupsPreview[groupName].sort((a, b) => b.totalPoints - a.totalPoints || b.totalDiffScore - a.totalDiffScore);
             }
 
@@ -1744,8 +1743,12 @@
          * @param {string} phaseIdToUpdate ID of the phase whose pools are to be generated.
          */
         function generatePoolsForPhase(phaseIdToUpdate) {
+            console.log("--- DEBUG: Entering generatePoolsForPhase ---");
+            console.log(`DEBUG: Requested Phase ID to Update: ${phaseIdToUpdate}`);
+
             if (allTeams.length === 0) {
                 showMessage(messageElement, "Aucune équipe n'a été ajoutée. Veuillez gérer les équipes d'abord.", true);
+                console.log("DEBUG: No teams available, exiting.");
                 return;
             }
 
@@ -1753,19 +1756,23 @@
 
             if (isNaN(requestedTeamsPerPool) || requestedTeamsPerPool < 1) {
                 showMessage(messageElement, "Veuillez entrer un nombre valide d'équipes par poule (au moins 1).", true);
+                console.log("DEBUG: Invalid teams per pool (less than 1), exiting.");
                 return;
             }
 
             if (requestedTeamsPerPool > 10) {
                 showMessage(messageElement, "Le nombre d'équipes par poule ne peut pas dépasser 10 (le niveau maximum des équipes).", true);
+                console.log("DEBUG: Teams per pool exceeds max level (10), exiting.");
                 return;
             }
 
             const phaseToGenerate = allBrassagePhases.find(p => p.id === phaseIdToUpdate);
             if (!phaseToGenerate) {
                 showMessage(messageElement, "Erreur: Phase à générer introuvable.", true);
+                console.log(`DEBUG: Phase with ID ${phaseIdToUpdate} not found, exiting.`);
                 return;
             }
+            console.log(`DEBUG: Phase to generate found: ${phaseToGenerate.name} (Type: ${phaseToGenerate.type})`);
 
             // Get sorted list of actual brassage phases (initial and secondary)
             const sortedActualBrassagePhases = allBrassagePhases
@@ -1773,29 +1780,58 @@
                 .sort((a, b) => a.timestamp - b.timestamp);
             
             const currentPhaseIndexInSorted = sortedActualBrassagePhases.findIndex(p => p.id === phaseIdToUpdate);
-            const isFirstActualBrassagePhase = currentPhaseIndexInSorted === 0;
+            // Check if this is the absolute first brassage phase created by chronological order
+            const isFirstActualBrassagePhaseOverall = currentPhaseIndexInSorted === 0;
+            console.log(`DEBUG: Is this the first *overall* brassage phase? ${isFirstActualBrassagePhaseOverall}`);
 
+            // Get the user's selected pool generation basis directly from localStorage
+            // We read it fresh every time to avoid caching issues.
             const selectedBasis = localStorage.getItem(POOL_GENERATION_BASIS_KEY);
-            let useInitialLevels = (selectedBasis === 'initialLevels'); // Default based on UI selection
+            console.log(`DEBUG: User's selected basis from localStorage (POOL_GENERATION_BASIS_KEY): "${selectedBasis}"`);
 
-            // Force first phase to use initial levels, regardless of user selection for subsequent phases
-            if (isFirstActualBrassagePhase) {
-                useInitialLevels = true;
-                // No need to update radio state here, as it's an internal override for the first phase
-                // A user-facing message is better than UI manipulation for this specific case.
+            let effectiveUseInitialLevels;
+
+            if (isFirstActualBrassagePhaseOverall) {
+                // The very first brassage phase (initial or secondary, though usually initial) MUST use initial levels.
+                effectiveUseInitialLevels = true;
                 showMessage(basisMessageElement, "La toute première phase de brassage utilise toujours les niveaux initiaux des équipes.", false);
+                console.log("DEBUG: This is the first *overall* brassage phase. Forcing effectiveUseInitialLevels = true.");
+            } else if (phaseToGenerate.type === PHASE_TYPE_SECONDARY_BRASSAGE) {
+                // Secondary brassage phases always derive from previous results.
+                effectiveUseInitialLevels = false;
+                console.log("DEBUG: Phase type is SECONDARY_BRASSAGE. Forcing effectiveUseInitialLevels = false.");
+            } else if (phaseToGenerate.type === PHASE_TYPE_INITIAL) {
+                // For subsequent initial brassage phases, respect the user's chosen basis.
+                effectiveUseInitialLevels = (selectedBasis === 'initialLevels');
+                console.log(`DEBUG: Phase type is INITIAL_BRASSAGE (not first overall). EffectiveUseInitialLevels based on selectedBasis: ${effectiveUseInitialLevels}.`);
             } else {
-                // For subsequent phases, if basing on previous results, check completion of the immediately preceding phase
-                if (useInitialLevels === false) { // This means selectedBasis was 'previousResults'
-                    const previousBrassagePhase = sortedActualBrassagePhases[currentPhaseIndexInSorted - 1];
-                    if (!previousBrassagePhase || !isBrassagePhaseComplete(previousBrassagePhase)) {
-                        showMessage(messageElement, `Veuillez compléter tous les scores de la phase précédente ("${escapeHtml(previousBrassagePhase ? previousBrassagePhase.name : 'Phase Inconnue')}") avant de générer les poules basées sur les résultats.`, true);
-                        return;
-                    }
+                // Fallback for any other unexpected phase type, default to initial levels or throw error
+                effectiveUseInitialLevels = true; // Safe default
+                console.warn(`DEBUG: Unknown phase type encountered (${phaseToGenerate.type}). Defaulting to initial levels.`);
+            }
+
+            console.log(`DEBUG: Final effectiveUseInitialLevels for this generation attempt: ${effectiveUseInitialLevels}`);
+
+            // Now, apply the check for previous results only if the effective method for THIS phase is 'previousResults'
+            if (!effectiveUseInitialLevels) { // This means the effective method for this generation is 'previousResults'
+                const previousBrassagePhase = sortedActualBrassagePhases[currentPhaseIndexInSorted - 1];
+                console.log(`DEBUG: Effective method is 'previousResults'. Checking previous phase completion.`);
+                if (!previousBrassagePhase) {
+                    showMessage(messageElement, "Erreur logique: La phase précédente est introuvable pour une génération basée sur les résultats.", true);
+                    console.log("DEBUG: Previous phase not found for results-based generation, exiting.");
+                    return;
                 }
+                console.log(`DEBUG: Previous phase to check: ${previousBrassagePhase.name} (ID: ${previousBrassagePhase.id})`);
+                if (!isBrassagePhaseComplete(previousBrassagePhase)) {
+                    showMessage(messageElement, `Veuillez compléter tous les scores de la phase précédente ("${escapeHtml(previousBrassagePhase.name)}") avant de générer les poules basées sur les résultats.`, true);
+                    console.log(`DEBUG: Previous phase (${previousBrassagePhase.name}) is NOT complete, exiting.`);
+                    return;
+                }
+                console.log(`DEBUG: Previous phase (${previousBrassagePhase.name}) IS complete.`);
             }
             
-            const teamsForGeneration = useInitialLevels ? allTeams : (function() {
+            // Determine the actual teams to use for generation
+            const teamsForGeneration = effectiveUseInitialLevels ? allTeams : (function() {
                 const globalRankings = getGlobalRankings(allTeams, allBrassagePhases);
                 const teamsWithScores = globalRankings.filter(r => r.totalPoints !== 0 || r.totalDiffScore !== 0).map(r => ({
                     id: r.teamObject.id,
@@ -1805,19 +1841,23 @@
                     totalDiffScore: r.totalDiffScore
                 }));
                 // If there are no teams with scores, fall back to all teams but warn
-                if (teamsWithScores.length === 0 && !isFirstActualBrassagePhase) {
+                if (teamsWithScores.length === 0 && !isFirstActualBrassagePhaseOverall) {
                     showMessage(messageElement, "Aucune équipe avec des scores enregistrés pour générer des poules basées sur les résultats précédents. Les niveaux initiaux seront utilisés.", true);
+                    console.log("DEBUG: No teams with scores for results-based generation, falling back to all teams.");
                     return allTeams; // Fallback
                 }
+                console.log(`DEBUG: Teams for generation based on scores (${teamsWithScores.length} teams):`, teamsWithScores.map(t => `${t.name} (Pts: ${t.totalPoints}, Diff: ${t.totalDiffScore})`).join(', '));
                 return teamsWithScores.length > 0 ? teamsWithScores : allTeams; // Use teamsWithScores if available, else allTeams
             })();
 
             if (teamsForGeneration.length === 0) {
                  showMessage(messageElement, "Aucune équipe disponible pour générer des poules.", true);
+                 console.log("DEBUG: No teams for generation, exiting.");
                  return;
             }
             if (teamsForGeneration.length < requestedTeamsPerPool) {
-                showMessage(messageElement, `Pas assez d'équipes (${teamsForGeneration.length}) pour former des poules de ${requestedTeamsPerPool} équipes. Réduisez le nombre d'équipes par poule ou ajoutez des équipes.`, true);
+                showMessage(messageElement, `Pas assez d'équipes (${teamsForGeneration.length}) pour former des poules de ${requestedTeamsPerPool} équipes. Réduisez le nombre d'équipes par poule ou ajoutez des équipes.` + (effectiveUseInitialLevels ? "" : " Assurez-vous d'avoir suffisamment d'équipes avec des scores valides."), true);
+                console.log("DEBUG: Not enough teams for requested pools, exiting.");
                 return;
             }
 
@@ -1826,6 +1866,7 @@
             let bestPools = null;
             let minRepetitions = Infinity;
             let bestRemainingTeamsCount = Infinity;
+            console.log(`DEBUG: Starting pool generation attempts (max ${MAX_ATTEMPTS})...`);
 
             for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
                 // Generate and evaluate potential pools
@@ -1846,7 +1887,7 @@
                     
                     // If we found a perfect solution (0 repetitions), no need to try further
                     if (minRepetitions === 0 && bestRemainingTeamsCount === 0) { // Also ensure all teams assigned
-                         console.log(`DEBUG: Solution optimale trouvée en ${attempt + 1} tentatives.`);
+                         console.log(`DEBUG: Optimal solution found in ${attempt + 1} attempts.`);
                          break;
                     }
                 }
@@ -1854,13 +1895,14 @@
 
             if (!bestPools) {
                 showMessage(messageElement, "Impossible de générer des poules valides après plusieurs tentatives. Vérifiez le nombre d'équipes et les paramètres.", true);
+                console.log("DEBUG: Failed to generate valid pools after all attempts, exiting.");
                 return;
             }
 
             const phaseIndex = allBrassagePhases.findIndex(p => p.id === phaseIdToUpdate);
             if (phaseIndex > -1) {
                 allBrassagePhases[phaseIndex].pools = bestPools;
-                allBrassagePhases[phaseIndex].generated = true;
+                allBrassagePhases[phaseIndex].generated = true; 
                 saveBrassagePhases(); // This will rebuild the matchOccurrenceMap
                 renderPhaseHistory();
                 renderPoolsWithCurrentSettings(bestPools, allBrassagePhases[phaseIndex].name, phaseIdToUpdate);
@@ -1875,10 +1917,14 @@
                     successMessage += ` ${bestRemainingTeamsCount} équipe(s) n'ont pas pu être assignée(s) à une poule.`;
                 }
                 showMessage(messageElement, successMessage);
+                console.log("DEBUG: Pool generation successful.");
             } else {
                 showMessage(messageElement, "Erreur: Phase à générer introuvable après les vérifications.", true);
+                console.log("DEBUG: Phase not found after final checks, exiting.");
             }
+            console.log("--- DEBUG: Exiting generatePoolsForPhase ---");
         }
+
 
         // Renommage de la fonction `previewSecondaryGroups` en `_performSecondaryGroupsPreview`
         // et ajout d'un wrapper `previewSecondaryGroups` pour la modale d'avertissement.
@@ -2106,7 +2152,7 @@
                 }
 
                 // Remove only existing elimination seeding phases to avoid duplicates if re-validating
-                allBrassagePhases = allBrassagePhases.filter(p => p.type !== PHASE_TYPE_ELIMINATION_SEEDING);
+                allBrassagePhases = allBrassagePhases.filter(p => p.type === PHASE_TYPE_ELIMINATION_SEEDING);
 
                 const eliminationSeedingPhase = {
                     id: `${PHASE_TYPE_ELIMINATION_SEEDING}_${Date.now()}`,
@@ -2169,7 +2215,7 @@
                 saveSecondaryGroupsPreview();
 
                 // Remove only existing elimination seeding phases to avoid duplicates if re-validating
-                allBrassagePhases = allBrassagePhases.filter(p => p.type !== PHASE_TYPE_ELIMINATION_SEEDING);
+                allBrassagePhases = allBrassagePhases.filter(p => p.type === PHASE_TYPE_ELIMINATION_SEEDING);
 
                 const eliminationSeedingPhase = {
                     id: `${PHASE_TYPE_ELIMINATION_SEEDING}_${Date.now()}_direct`,
@@ -2330,24 +2376,42 @@
         });
         
         function updatePoolGenerationBasisUI() {
-            if (basisPreviousResultsRadio.checked) {
-                numberOfGlobalPhasesInput.value = 1;
-                numberOfGlobalPhasesInput.readOnly = true;
-                numberOfGlobalPhasesInput.classList.add('bg-gray-200');
-                basisHelpText.innerHTML = `
-                    Lorsque cette méthode est sélectionnée, vous ne pouvez créer qu'une seule phase de brassage initiale à la fois. <br>
-                    Pour débloquer la phase suivante, vous devrez d'abord compléter tous les scores de la phase actuelle.
-                `;
-            } else { // initialLevels is checked
-                numberOfGlobalPhasesInput.readOnly = false;
-                numberOfGlobalPhasesInput.classList.remove('bg-gray-200');
-                basisHelpText.textContent = `
-                    Choisissez how les équipes seront réparties dans les poules.
-                `;
-            }
-            // Ensure next phase button visibility is re-evaluated whenever basis changes
-            renderPhaseHistory();
+        let selectedBasis = localStorage.getItem(POOL_GENERATION_BASIS_KEY);
+        console.log(`DEBUG: updatePoolGenerationBasisUI - Initial selectedBasis from localStorage: "${selectedBasis}"`);
+
+        // Si selectedBasis est null (première charge) ou "null" (problème de sérialisation), définir une valeur par défaut.
+        if (selectedBasis === null || selectedBasis === "null") {
+            selectedBasis = 'initialLevels'; // Défaut à 'initialLevels'
+            localStorage.setItem(POOL_GENERATION_BASIS_KEY, selectedBasis); // Enregistrer la valeur par défaut
+            console.log("DEBUG: POOL_GENERATION_BASIS_KEY was null or 'null', defaulted to 'initialLevels' and saved to localStorage.");
         }
+        console.log(`DEBUG: updatePoolGenerationBasisUI - Final selectedBasis after default check: "${selectedBasis}"`);
+
+
+        const initialLevelsRadio = document.getElementById('basisInitialLevels');
+        const previousResultsRadio = document.getElementById('basisPreviousResults');
+        const numberOfGlobalPhasesInput = document.getElementById('numberOfGlobalPhases');
+        const basisHelpText = document.getElementById('basisHelpText');
+
+        if (initialLevelsRadio && previousResultsRadio) {
+            if (selectedBasis === 'initialLevels') {
+                initialLevelsRadio.checked = true;
+                previousResultsRadio.checked = false;
+                numberOfGlobalPhasesInput.readOnly = false; // Permettre plusieurs phases pour les niveaux initiaux
+                basisHelpText.textContent = "Crée des phases en utilisant les niveaux initiaux des équipes. Vous pouvez créer plusieurs phases de brassage initiales si nécessaire.";
+            } else { // selectedBasis === 'previousResults'
+                initialLevelsRadio.checked = false;
+                previousResultsRadio.checked = true;
+                numberOfGlobalPhasesInput.value = 1; // Forcer à 1 pour les résultats précédents
+                numberOfGlobalPhasesInput.readOnly = true; // Une seule phase à la fois pour les résultats précédents
+                basisHelpText.textContent = "Crée une phase en utilisant les résultats cumulés des brassages précédents. Une seule phase peut être créée à la fois avec cette méthode.";
+            }
+        } else {
+             console.warn("DEBUG: Radio buttons for pool generation basis not found in DOM.");
+        }
+        // Assurez-vous que l'historique des phases et la visibilité des boutons sont mis à jour
+        renderPhaseHistory(); // Cette fonction appelle updateNextPhaseButtonVisibility en interne
+    }
 
 
         createGlobalPhasesStructureBtn.addEventListener('click', () => {
