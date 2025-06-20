@@ -503,7 +503,7 @@
                     </p>
                 </div>
                 <p class="text-2xl text-center font-extrabold text-blue-700 mt-12">
-                    Prêt(e) à révolutionner vos tournois ? Accroche-toi, l'aventure commence maintenant ! 🎉
+                    Prêt(e) à révolutionner vos tournois ? Accroche-toi, l'aventure commence maintenant ! <img src="images/voila.png" alt="emoji casse-tête" class="inline-block w-12 h-12 align-middle mx-1">
                 </p>
             </div>
         `;
