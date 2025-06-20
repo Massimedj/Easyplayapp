@@ -428,7 +428,7 @@
     function renderHomePage() {
         APP_CONTAINER.innerHTML = `
             <div class="max-w-5xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-                <h1 class="text-4xl font-extrabold text-center text-gray-900 mb-8 leading-tight">
+                <h1 class="text-4xl font-extrabold text-center text-blue-700 mb-8 leading-tight">
                     Marre des casse-têtes<img src="Images/explosion.png" alt="emoji casse-tête" class="inline-block w-12 h-12 align-middle mx-1">pour organiser vos tournois ?<br>
                     Cette App est là pour simplifier la vie des organisateurs de tournois ! <img src="Images/content.png" alt="emoji casse-tête" class="inline-block w-15 h-12 align-middle mx-1">
                 </h1>
