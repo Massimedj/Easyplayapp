@@ -178,5 +178,124 @@
     <!-- Script principal de l'application -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
     <script src="src/script.js"></script>
+
+    <!-- Firebase SDKs -->
+    <!-- Firebase App (doit toujours être le premier) -->
+    <script type="module">
+        // Import des modules Firebase nécessaires
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Variables globales pour Firebase (seront initialisées plus tard)
+        let app;
+        let db;
+        let auth;
+        let userId; // Pour stocker l'ID de l'utilisateur
+
+        // La configuration Firebase sera fournie par l'environnement Canvas
+        // Ne pas la modifier ici, elle sera injectée au runtime
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // Initialisation de Firebase et de l'authentification
+        function initializeFirebaseAndAuth() {
+            try {
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                // Écouteur pour les changements d'état d'authentification
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        // L'utilisateur est connecté
+                        userId = user.uid;
+                        console.log("Firebase: Authentifié avec succès. User ID:", userId);
+                        // Ici, vous pourriez déclencher le chargement des données Firestore
+                        // ou la mise à jour de l'interface utilisateur
+                    } else {
+                        // L'utilisateur est déconnecté ou n'a jamais été connecté
+                        console.log("Firebase: Utilisateur non authentifié. Tentative de connexion anonyme...");
+                        try {
+                            if (initialAuthToken) {
+                                await signInWithCustomToken(auth, initialAuthToken);
+                                console.log("Firebase: Connecté avec le token personnalisé.");
+                            } else {
+                                await signInAnonymously(auth);
+                                console.log("Firebase: Connecté de manière anonyme.");
+                            }
+                            userId = auth.currentUser.uid;
+                        } catch (error) {
+                            console.error("Firebase: Erreur d'authentification:", error);
+                            // Fallback si l'authentification échoue, utiliser un ID aléatoire
+                            userId = crypto.randomUUID();
+                            console.warn("Firebase: Utilisation d'un ID utilisateur aléatoire en raison d'une erreur d'authentification.");
+                        }
+                    }
+                    // Rendre les fonctions Firebase globales pour le reste de votre script.js
+                    window.db = db;
+                    window.auth = auth;
+                    window.userId = userId;
+                    window.appId = appId; // Rendre appId disponible globalement
+                    window.doc = doc;
+                    window.getDoc = getDoc;
+                    window.addDoc = addDoc;
+                    window.setDoc = setDoc;
+                    window.updateDoc = updateDoc;
+                    window.deleteDoc = deleteDoc;
+                    window.onSnapshot = onSnapshot;
+                    window.collection = collection;
+                    window.query = query;
+                    window.where = where;
+                    window.getDocs = getDocs;
+
+                    // Une fois Firebase initialisé et l'utilisateur authentifié,
+                    // vous pouvez appeler votre fonction de chargement de données
+                    // ou de démarrage de l'application ici si elle dépend de Firebase.
+                    // Par exemple, si loadAllData() doit utiliser Firestore:
+                    // if (typeof loadAllDataFromFirestore === 'function') {
+                    //     loadAllDataFromFirestore();
+                    // }
+                });
+
+            } catch (error) {
+                console.error("Firebase: Erreur lors de l'initialisation de Firebase:", error);
+                // En cas d'échec d'initialisation, utiliser un ID utilisateur aléatoire
+                userId = crypto.randomUUID();
+                window.userId = userId;
+                window.appId = appId;
+            }
+        }
+
+        // Appeler l'initialisation de Firebase lorsque le DOM est chargé
+        document.addEventListener('DOMContentLoaded', initializeFirebaseAndAuth);
+
+        // Expose Firebase functions globally for script.js to use
+        // This is a temporary measure; ideally, you'd pass these as arguments
+        // or use a module pattern if script.js were also a module.
+        // For now, these are just placeholders and will be properly set in onAuthStateChanged
+        window.db = null;
+        window.auth = null;
+        window.userId = null;
+        window.appId = null;
+        window.doc = null;
+        window.getDoc = null;
+        window.addDoc = null;
+        window.setDoc = null;
+        window.updateDoc = null;
+        window.deleteDoc = null;
+        window.onSnapshot = null;
+        window.collection = null;
+        window.query = null;
+        window.where = null;
+        window.getDocs = null;
+
+    </script>
+    <!-- XLSX library for Excel import/export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Votre script principal -->
+    <script src="script.js"></script>
+
 </body>
 </html>
