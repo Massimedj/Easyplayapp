@@ -20,7 +20,6 @@
     let eliminationPhases = {};
     let currentSecondaryGroupsPreview = {}; // Pour la prévisualisation des groupes secondaires, maintenant persistant
     let eliminatedTeams = new Set(); // Set pour stocker les IDs des équipes éliminées
-    let modalConfirmBtn = document.getElementById('modalConfirmBtn'); // Utilisez let ici car il est réaffecté
 
     let currentDisplayedPhaseId = null; // ID de la phase de brassage actuellement affichée
 
@@ -33,7 +32,7 @@
     const globalModal = document.getElementById('globalModal');
     const modalTitle = document.getElementById('modalTitle');
     const modalBody = document.getElementById('modalBody');
-    let modalConfirmBtn = document.getElementById('modalConfirmBtn'); // <-- CHANGEMENT : Utilisez 'let' ici
+    let modalConfirmBtn = document.getElementById('modalConfirmBtn'); // <-- CORRECTION APPLIQUÉE ICI : Utilise 'let'
     const modalCancelBtn = document.getElementById('modalCancelBtn');
 
     // --- Fonctions Utilitaires ---
@@ -288,7 +287,7 @@
 
     /**
      * Chemin du document Firestore pour les données du tournoi de l'utilisateur.
-     * @returns {import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js").DocumentReference|null} La référence du document ou null si Firebase n'est pas prêt.
+     * @returns {import("https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js").DocumentReference|null} La référence du document ou null si Firebase n'est pas prêt.
      */
     function getUserTournamentDocRef() {
         if (window.db && window.userId && window.appId) {
@@ -943,7 +942,7 @@
      */
     function renderHomePage() {
         clearAppContainer();
-        APP_CONTAINer.className = 'p-6 bg-gray-100 min-h-screen flex flex-col items-center justify-center';
+        APP_CONTAINER.className = 'p-6 bg-gray-100 min-h-screen flex flex-col items-center justify-center';
         APP_CONTAINER.innerHTML = `
             <div class="text-center p-8 bg-white rounded-xl shadow-lg max-w-2xl w-full">
                 <h1 class="text-5xl font-extrabold text-blue-800 mb-6 animate-fade-in-down">Bienvenue sur EasyPlay !</h1>
@@ -972,7 +971,7 @@
      */
     function renderTeamsPage() {
         clearAppContainer();
-        APP_CONTAINer.className = 'p-6 bg-gray-100 min-h-screen';
+        APP_CONTAINER.className = 'p-6 bg-gray-100 min-h-screen';
         const teamListHtml = allTeams.length === 0 ?
             '<p class="text-gray-600 text-center col-span-full">Aucune équipe enregistrée pour le moment.</p>' :
             allTeams.map(team => `
@@ -1974,7 +1973,7 @@
         showToast("Équipes exportées avec succès.", "success");
     }
 
-// --- Initialisation de l'Application ---
+    // --- Initialisation de l'Application ---
     document.addEventListener('DOMContentLoaded', () => {
         // Attendre que Firebase soit prêt avant de tenter de charger les données
         // L'initialisation de Firebase est gérée dans index.html et expose les variables globales.
@@ -1983,7 +1982,7 @@
             if (window.db && window.userId) {
                 clearInterval(checkFirebaseReady);
                 loadAllData(); // Charger toutes les données au démarrage depuis Firestore
-                handleLocationHash(); // Rendre la page initiale après le chargement des données
+                // handleLocationHash() est déjà appelé par loadAllData via onSnapshot
             }
         }, 100); // Vérifier toutes les 100ms
 
@@ -1991,26 +1990,38 @@
         window.addEventListener('hashchange', handleLocationHash);
 
         // Attacher les gestionnaires d'événements pour les boutons de la modale globale
-        modalCancelBtn.addEventListener('click', hideModal); // <--- CETTE LIGNE EST LE PROBLÈME
+        // Déplacé ici pour s'assurer que modalCancelBtn est disponible.
+        // Assurez-vous que les références `modalCancelBtn` et `modalConfirmBtn` sont bien définies
+        // au début du script dans la section "Cache des éléments DOM de la modale"
+        if (modalCancelBtn) {
+            modalCancelBtn.addEventListener('click', hideModal);
+        } else {
+            console.error("modalCancelBtn non trouvé au chargement du DOM.");
+        }
+        // Le modalConfirmBtn est géré dynamiquement dans showModal()
 
         // Ajout de la transparence à la barre de navigation lors du défilement
         const navBar = document.querySelector('nav');
-        let isScrolled = false;
-        window.addEventListener('scroll', () => {
-            if (window.scrollY > 0) {
-                if (!isScrolled) {
-                    navBar.classList.add('bg-blue-700/70', 'transition-colors', 'duration-300'); // Plus transparent
-                    navBar.classList.remove('bg-blue-700/90');
-                    isScrolled = true;
+        if (navBar) { // Vérifier si la navBar existe
+            let isScrolled = false;
+            window.addEventListener('scroll', () => {
+                if (window.scrollY > 0) {
+                    if (!isScrolled) {
+                        navBar.classList.add('bg-blue-700/70', 'transition-colors', 'duration-300'); // Plus transparent
+                        navBar.classList.remove('bg-blue-700/90');
+                        isScrolled = true;
+                    }
+                } else {
+                    if (isScrolled) {
+                        navBar.classList.remove('bg-blue-700/70');
+                        navBar.classList.add('bg-blue-700/90'); // Moins transparent
+                        isScrolled = false;
+                    }
                 }
-            } else {
-                if (isScrolled) {
-                    navBar.classList.remove('bg-blue-700/70');
-                    navBar.classList.add('bg-blue-700/90'); // Moins transparent
-                    isScrolled = false;
-                }
-            }
-        });
+            });
+        } else {
+            console.warn("Barre de navigation (nav) non trouvée.");
+        }
     });
 
 })();
