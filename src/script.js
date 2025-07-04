@@ -20,6 +20,7 @@
     let eliminationPhases = {};
     let currentSecondaryGroupsPreview = {}; // Pour la prévisualisation des groupes secondaires, maintenant persistant
     let eliminatedTeams = new Set(); // Set pour stocker les IDs des équipes éliminées
+    let modalConfirmBtn = document.getElementById('modalConfirmBtn'); // Utilisez let ici car il est réaffecté
 
     let currentDisplayedPhaseId = null; // ID de la phase de brassage actuellement affichée
 
@@ -1973,7 +1974,7 @@
         showToast("Équipes exportées avec succès.", "success");
     }
 
-    // --- Initialisation de l'Application ---
+// --- Initialisation de l'Application ---
     document.addEventListener('DOMContentLoaded', () => {
         // Attendre que Firebase soit prêt avant de tenter de charger les données
         // L'initialisation de Firebase est gérée dans index.html et expose les variables globales.
@@ -1990,7 +1991,7 @@
         window.addEventListener('hashchange', handleLocationHash);
 
         // Attacher les gestionnaires d'événements pour les boutons de la modale globale
-        modalCancelBtn.addEventListener('click', hideModal);
+        modalCancelBtn.addEventListener('click', hideModal); // <--- CETTE LIGNE EST LE PROBLÈME
 
         // Ajout de la transparence à la barre de navigation lors du défilement
         const navBar = document.querySelector('nav');
