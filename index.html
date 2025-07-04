@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EasyPlay - Gestionnaire de Tournoi Sportif</title>
     <!-- Favicon -->
-    <link rel="icon" href="Images/Logo_EsayPlay.png" type="image/png"> <!-- Chemin corrigé si votre favicon est ici -->
+    <link rel="icon" href="Images/Logo_EsayPlay.png" type="image/png">
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Font Awesome CDN pour les icônes -->
@@ -13,7 +13,6 @@
     <!-- Police Inter de Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        /* Votre CSS existant */
         body {
             font-family: 'Inter', sans-serif;
             background-color: #f3f4f6; /* Couleur de fond légère */
@@ -28,50 +27,135 @@
         }
         .loser-team {
             color: #EF4444; /* Rouge */
-            text-decoration: line-through;
+            opacity: 0.7;
         }
         /* Styles pour la modale */
         .modal-overlay {
-            background-color: rgba(0, 0, 0, 0.5);
-            transition: opacity 0.3s ease-out;
+            background-color: rgba(0, 0, 0, 0.5); /* Fond semi-transparent */
         }
-        /* Animations */
-        @keyframes fadeInDown {
-            from { opacity: 0; transform: translateY(-20px); }
-            to { opacity: 1; transform: translateY(0); }
+        /* Ajustements pour la barre de navigation verticale */
+        nav {
+            padding-right: 0; /* Supprimer le padding à droite par défaut */
+            align-items: flex-start; /* Aligner les éléments au début pour un look vertical */
         }
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
+        nav .container {
+            flex-direction: column; /* Organiser le contenu du conteneur en colonne */
+            align-items: center; /* Centrer les éléments horizontalement dans la nav */
+            width: 100%; /* S'assurer que le conteneur prend toute la largeur disponible dans la nav */
         }
-        .animate-fade-in-down { animation: fadeInDown 0.5s ease-out forwards; }
-        .animate-fade-in-up { animation: fadeInUp 0.5s ease-out forwards; }
+        nav ul {
+            width: 100%; /* Les liens de navigation prennent toute la largeur */
+        }
+        nav li {
+            width: 100%; /* Chaque élément de liste prend toute la largeur */
+        }
+        .nav-link {
+            display: flex; /* Utiliser flex pour aligner icône et texte */
+            justify-content: flex-start; /* Aligner à gauche */
+            padding-left: 1rem; /* Ajouter un peu de padding pour le contenu des liens */
+        }
+        /* S'assurer que le contenu principal est décalé par la largeur de la nav (10rem pour w-40) */
+        #app-container {
+            margin-left: 10rem; /* Largeur de la nav (w-40 = 10rem) */
+            padding: 2rem; /* Ajouter un padding pour le contenu */
+            min-height: calc(100vh - 4rem); /* Hauteur minimale pour que le footer ne monte pas trop */
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+        }
+        /* Le footer prendra 100% de la largeur du viewport, il passera sous la nav fixe */
+        footer {
+            margin-left: 0; /* Assure qu'il n'y a pas de marge à gauche */
+            width: 100%;   /* S'étend sur toute la largeur de l'écran */
+        }
+
+        /* Responsivité pour la navigation sur les petits écrans */
+        @media (max-width: 768px) {
+            nav {
+                width: 100%;
+                height: auto;
+                position: relative; /* La nav n'est plus fixe à gauche, elle est en haut */
+                flex-direction: row;
+                justify-content: space-between;
+                padding: 1rem;
+            }
+            nav .container {
+                flex-direction: row;
+                justify-content: space-between;
+            }
+            nav ul {
+                display: none; /* Masquez la liste des liens par défaut sur mobile pour un menu hamburger */
+            }
+            #app-container {
+                margin-left: 0; /* Pas de décalage sur mobile */
+                padding: 1rem; /* Ajuster le padding pour mobile */
+            }
+            footer {
+                /* Sur mobile, le footer doit toujours prendre toute la largeur et n'aura pas de décalage */
+                margin-left: 0;
+                width: 100%;
+            }
+        }
     </style>
 </head>
-<body class="bg-gray-100 font-inter">
-    <!-- Barre de navigation -->
-    <nav class="bg-blue-700/90 p-4 shadow-lg fixed w-full top-0 z-40 backdrop-blur-sm">
-        <div class="container mx-auto flex justify-between items-center">
-            <a href="#home" class="text-white text-2xl font-bold flex items-center">
-                <img src="Images/Logo_EsayPlay.png" alt="EasyPlay Logo" class="h-8 w-8 mr-2 rounded-full">
-                EasyPlay
-            </a>
-            <div class="space-x-4">
-                <a href="#teams" class="text-white hover:text-blue-200 transition-colors duration-200">Équipes</a>
-                <a href="#brassage-phases" class="text-white hover:text-blue-200 transition-colors duration-200">Brassages</a>
-                <a href="#elimination-phases" class="text-white hover:text-blue-200 transition-colors duration-200">Éliminations</a>
-                <a href="#secondary-groups" class="text-white hover:text-blue-200 transition-colors duration-200">Groupes Secondaires</a>
-            </div>
-        </div>
+<body class="bg-gray-100 min-h-screen flex flex-col">
+    <!-- Barre de navigation verticale -->
+    <nav class="bg-blue-600 shadow-lg fixed top-0 left-0 h-screen w-40 z-10 p-1 flex flex-col items-center">
+        <!-- Emplacement du logo en haut de la barre de navigation -->
+        <a href="#home" class="mb-8 mt-4">
+            <img src="Images/Logo_EsayPlay.png"
+                 alt="Logo EasyPlay"
+                 class="h-20 w-auto rounded-md object-cover"
+                 onerror="this.onerror=null;this.src='https://placehold.co/100x80/cccccc/333333?text=Logo';"
+            >
+        </a>
+
+        <!-- Liste de navigation avec icônes -->
+        <ul class="flex flex-col space-y-4 w-full">
+            <li>
+                <a href="#home" class="nav-link text-white hover:text-blue-200 transition duration-150 px-3 py-2 rounded-md flex items-center space-x-2">
+                    <i class="fas fa-home"></i> <span>Accueil</span>
+                </a>
+            </li>
+            <li>
+                <a href="#equipes" class="nav-link text-white hover:text-blue-200 transition duration-150 px-3 py-2 rounded-md flex items-center space-x-2">
+                    <i class="fas fa-users"></i> <span>Équipes</span>
+                </a>
+            </li>
+            <li>
+                <a href="#brassages" class="nav-link text-white hover:text-blue-200 transition duration-150 px-3 py-2 rounded-md flex items-center space-x-2">
+                    <i class="fas fa-layer-group"></i> <span>Brassages</span>
+                </a>
+            </li>
+            <li>
+                <a href="#eliminatoires" class="nav-link text-white hover:text-blue-200 transition duration-150 px-3 py-2 rounded-md flex items-center space-x-2">
+                    <i class="fas fa-trophy"></i> <span>Éliminatoires</span>
+                </a>
+            </li>
+            <li>
+                <a href="#classements" class="nav-link text-white hover:text-blue-200 transition duration-150 px-3 py-2 rounded-md flex items-center space-x-2">
+                    <i class="fas fa-list-ol"></i> <span>Classements</span>
+                </a>
+            </li>
+        </ul>
     </nav>
 
     <!-- Conteneur principal de l'application -->
-    <main id="app-container" class="pt-20">
-        <!-- Le contenu des pages sera injecté ici par JavaScript -->
+    <main id="app-container" class="relative z-0 pl-48 flex-grow">
+        <!-- Le contenu des pages sera rendu ici par JavaScript -->
+        <div class="flex-grow w-full max-w-6xl mx-auto py-8">
+            <!-- Ce div sera rempli par le JavaScript -->
+        </div>
     </main>
 
-    <!-- Modale globale -->
-    <div id="globalModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 transition-opacity duration-300 opacity-0 hidden">
+    <!-- Pied de page -->
+    <footer class="bg-blue-600 text-white p-1 text-center text-sm">
+        © 2025 EasyPlay. Tous droits réservés. Fait par Massi ⵣ. Pour toute question, contactez-moi à <a href="mailto:massi.medj@yahoo.fr" class="text-blue-200 hover:underline">massi.medj@yahoo.fr</a>.
+    </footer>
+
+    <!-- Modale globale pour les confirmations et messages -->
+    <div id="actionModal" class="modal-overlay hidden fixed inset-0 flex items-center justify-center z-50">
         <div class="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full mx-auto transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
             <h3 id="modalTitle" class="text-lg font-bold text-gray-900 mb-4">Titre de la modale</h3>
             <div id="modalBody" class="text-gray-700 mb-6">
@@ -222,7 +306,7 @@
 
     </script>
     <!-- XLSX library for Excel import/export -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
     <!-- Votre script principal -->
     <script src="src/script.js"></script>
 </body>
