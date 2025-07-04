@@ -33,7 +33,7 @@
     const globalModal = document.getElementById('globalModal');
     const modalTitle = document.getElementById('modalTitle');
     const modalBody = document.getElementById('modalBody');
-    const modalConfirmBtn = document.getElementById('modalConfirmBtn'); // <--- CETTE LIGNE
+    let modalConfirmBtn = document.getElementById('modalConfirmBtn'); // <-- CHANGEMENT : Utilisez 'let' ici
     const modalCancelBtn = document.getElementById('modalCancelBtn');
 
     // --- Fonctions Utilitaires ---
