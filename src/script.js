@@ -1,15 +1,13 @@
 (function() {
     // --- Constantes et Variables Globales ---
     const APP_CONTAINER = document.getElementById('app-container');
-
-    // Les clés localStorage sont supprimées car nous utilisons Firestore pour la persistance des données
-    // const TEAM_DATA_KEY = 'volleyTeamsData';
-    // const BRASSAGE_PHASES_KEY = 'volleyBrassagePhases';
-    // const ELIMINATION_PHASES_KEY = 'volleyEliminationPhases';
-    // const SECONDARY_GROUPS_SELECTION_KEY = 'volleySecondaryGroupsSelection';
-    // const POOL_GENERATION_BASIS_KEY = 'volleyPoolGenerationBasis';
-    // const SECONDARY_GROUPS_PREVIEW_KEY = 'volleySecondaryGroupsPreview';
-    // const ELIMINATED_TEAMS_KEY = 'volleyEliminatedTeams';
+    const TEAM_DATA_KEY = 'volleyTeamsData';
+    const BRASSAGE_PHASES_KEY = 'volleyBrassagePhases';
+    const ELIMINATION_PHASES_KEY = 'volleyEliminationPhases';
+    const SECONDARY_GROUPS_SELECTION_KEY = 'volleySecondaryGroupsSelection';
+    const POOL_GENERATION_BASIS_KEY = 'volleyPoolGenerationBasis'; // New key for pool generation basis
+    const SECONDARY_GROUPS_PREVIEW_KEY = 'volleySecondaryGroupsPreview'; // New key for persisting secondary group preview
+    const ELIMINATED_TEAMS_KEY = 'volleyEliminatedTeams'; // NOUVEAU: Clé pour les équipes éliminées
 
     const PHASE_TYPE_INITIAL = 'initial_brassage';
     const PHASE_TYPE_SECONDARY_BRASSAGE = 'secondary_brassage';
@@ -19,7 +17,7 @@
     let allBrassagePhases = [];
     let eliminationPhases = {};
     let currentSecondaryGroupsPreview = {}; // Pour la prévisualisation des groupes secondaires, maintenant persistant
-    let eliminatedTeams = new Set(); // Set pour stocker les IDs des équipes éliminées
+    let eliminatedTeams = new Set(); // NOUVEAU: Set pour stocker les IDs des équipes éliminées
 
     let currentDisplayedPhaseId = null; // ID de la phase de brassage actuellement affichée
 
@@ -33,7 +31,7 @@
     const modalTitle = document.getElementById('modalTitle');
     const modalBody = document.getElementById('modalBody');
     const modalCancelBtn = document.getElementById('modalCancelBtn');
-    let modalConfirmBtn = document.getElementById('modalConfirmBtn'); // CORRECTION: Utilisez 'let' ici
+    const modalConfirmBtn = document.getElementById('modalConfirmBtn');
 
     // --- Fonctions Utilitaires ---
 
@@ -53,7 +51,7 @@
             '`': '&#96;',
             '$': '&#36;'
         };
-
+	
         return s.replace(/[&<>"'`$]/g, function(m) { return map[m]; });
     }
 
@@ -95,7 +93,7 @@
             modalConfirmBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700', 'focus:ring-blue-500');
             modalConfirmBtn.classList.add('bg-red-600', 'hover:bg-red-700', 'focus:ring-red-500');
         } else {
-            modalConfirmBtn.classList.remove('bg-red-600', 'hover:bg-red-700', 'focus:ring-red-500');
+            modalConfirmBtn.classList.remove('bg-red-600', 'hover:bg-red-700', 'focus:ring-blue-500');
             modalConfirmBtn.classList.add('bg-blue-600', 'hover:bg-blue-700', 'focus:ring-blue-500');
         }
 
@@ -133,109 +131,70 @@
         return array;
     }
 
-    // --- Fonctions de Persistance (Firestore) ---
+    // --- Fonctions de Persistance (localStorage) ---
 
-    /**
-     * Chemin du document Firestore pour les données du tournoi de l'utilisateur.
-     * @returns {import("https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js").DocumentReference|null} La référence du document ou null si Firebase n'est pas prêt.
-     */
-    function getUserTournamentDocRef() {
-        if (window.db && window.userId && window.appId) {
-            return window.doc(window.db, 'artifacts', window.appId, 'users', window.userId, 'tournamentData', 'currentTournament');
-        }
-        console.error("Firebase ou User ID non initialisé. Impossible d'obtenir la référence du document.");
-        return null;
-    }
-
-    /**
-     * Sauvegarde toutes les données du tournoi dans Firestore.
-     * Cette fonction est appelée chaque fois que des données sont modifiées.
-     */
-    async function saveAllDataToFirestore() {
-        const docRef = getUserTournamentDocRef();
-        if (!docRef) {
-            showMessage(document.getElementById('message') || APP_CONTAINER, "Erreur: Impossible de sauvegarder les données, Firebase non prêt.", true);
-            return;
-        }
-
+    function loadAllData() {
         try {
-            const dataToSave = {
-                allTeams: allTeams,
-                allBrassagePhases: allBrassagePhases,
-                eliminationPhases: eliminationPhases,
-                currentSecondaryGroupsPreview: currentSecondaryGroupsPreview,
-                // Convertir le Set en Array pour le stockage Firestore
-                eliminatedTeams: Array.from(eliminatedTeams),
-                currentDisplayedPhaseId: currentDisplayedPhaseId,
-                // Sauvegarder les paramètres de la page Brassages
-                poolGenerationBasis: localStorage.getItem('volleyPoolGenerationBasis') || 'initialLevels',
-                teamsPerPoolSetting: localStorage.getItem('volleyTeamsPerPoolSetting') || '3',
-                secondaryGroupsSelection: localStorage.getItem('volleySecondaryGroupsSelection') || '2'
-            };
-            await window.setDoc(docRef, dataToSave);
-            console.log("Données sauvegardées avec succès dans Firestore.");
-            // showMessage(document.getElementById('message') || APP_CONTAINER, "Données sauvegardées.", false); // Peut être trop fréquent
+            allTeams = JSON.parse(localStorage.getItem(TEAM_DATA_KEY) || '[]');
+            allBrassagePhases = JSON.parse(localStorage.getItem(BRASSAGE_PHASES_KEY) || '[]');
+            eliminationPhases = JSON.parse(localStorage.getItem(ELIMINATION_PHASES_KEY) || '{}');
+            currentSecondaryGroupsPreview = JSON.parse(localStorage.getItem(SECONDARY_GROUPS_PREVIEW_KEY) || '{}');
+            // NOUVEAU: Charger les équipes éliminées
+            const storedEliminatedTeams = JSON.parse(localStorage.getItem(ELIMINATED_TEAMS_KEY) || '[]');
+            eliminatedTeams = new Set(storedEliminatedTeams);
+            
+            console.log("DEBUG: currentSecondaryGroupsPreview chargé:", currentSecondaryGroupsPreview);
+
+
+            rebuildMatchOccurrenceMap(); // Call to rebuild map after loading
+            console.log("DEBUG: Données chargées - Équipes:", allTeams, "Brassages:", allBrassagePhases, "Éliminatoires:", eliminationPhases);
         } catch (e) {
-            console.error("Erreur lors de la sauvegarde des données dans Firestore:", e);
-            showMessage(document.getElementById('message') || APP_CONTAINER, "Erreur lors de la sauvegarde des données.", true);
+            console.error("ERREUR: Impossible de charger les données depuis localStorage:", e);
+            allTeams = [];
+            allBrassagePhases = [];
+            eliminationPhases = {};
+            currentSecondaryGroupsPreview = {};
+            eliminatedTeams = new Set(); // NOUVEAU: Réinitialiser en cas d'erreur
+            matchOccurrenceMap = new Map(); // Ensure it's reset on error too
         }
+    }
+
+    function saveTeams() {
+        localStorage.setItem(TEAM_DATA_KEY, JSON.stringify(allTeams));
+        console.log("DEBUG: Équipes sauvegardées:", allTeams);
+    }
+
+    function saveBrassagePhases() {
+        localStorage.setItem(BRASSAGE_PHASES_KEY, JSON.stringify(allBrassagePhases));
+        rebuildMatchOccurrenceMap(); // Rebuild map after saving changes
+        updateRepeatedMatchesCountDisplay(); // Update display after saving phases
+        console.log("DEBUG: Phases de brassage sauvegardées:", allBrassagePhases);
+    }
+
+    function saveEliminationPhases() {
+        localStorage.setItem(ELIMINATION_PHASES_KEY, JSON.stringify(eliminationPhases));
+        console.log("DEBUG: Phases éliminatoires sauvegardées:", eliminationPhases);
     }
 
     /**
-     * Charge toutes les données du tournoi depuis Firestore.
-     * Met également en place un listener en temps réel.
+     * Saves the current state of currentSecondaryGroupsPreview to localStorage.
      */
-    async function loadAllData() {
-        const docRef = getUserTournamentDocRef();
-        if (!docRef) {
-            console.warn("Firebase non prêt lors du chargement des données. Tentative de réessai...");
-            return;
+    function saveSecondaryGroupsPreview() {
+        localStorage.setItem(SECONDARY_GROUPS_PREVIEW_KEY, JSON.stringify(currentSecondaryGroupsPreview));
+        // Also save the dropdown selection for consistency
+        const numberOfSecondaryGroupsInput = document.getElementById('numberOfSecondaryGroups');
+        if (numberOfSecondaryGroupsInput) {
+            localStorage.setItem(SECONDARY_GROUPS_SELECTION_KEY, numberOfSecondaryGroupsInput.value);
         }
-
-        // Mettre en place un listener en temps réel
-        window.onSnapshot(docRef, (docSnap) => {
-            if (docSnap.exists()) {
-                const data = docSnap.data();
-                allTeams = data.allTeams || [];
-                allBrassagePhases = data.allBrassagePhases || [];
-                eliminationPhases = data.eliminationPhases || {};
-                currentSecondaryGroupsPreview = data.currentSecondaryGroupsPreview || {};
-                // Convertir l'Array en Set lors du chargement
-                eliminatedTeams = new Set(data.eliminatedTeams || []);
-                currentDisplayedPhaseId = data.currentDisplayedPhaseId || null;
-
-                // Charger les paramètres depuis Firestore (qui étaient stockés dans localStorage)
-                localStorage.setItem('volleyPoolGenerationBasis', data.poolGenerationBasis || 'initialLevels');
-                localStorage.setItem('volleyTeamsPerPoolSetting', data.teamsPerPoolSetting || '3');
-                localStorage.setItem('volleySecondaryGroupsSelection', data.secondaryGroupsSelection || '2');
-
-                console.log("Données chargées ou mises à jour depuis Firestore.");
-
-                // Reconstruire matchOccurrenceMap après le chargement des phases
-                rebuildMatchOccurrenceMap();
-
-                // Rendre la page après le chargement initial des données
-                // ou après une mise à jour en temps réel
-                handleLocationHash();
-            } else {
-                console.log("Aucune donnée trouvée dans Firestore. Initialisation des données par défaut.");
-                // Si aucune donnée n'existe, on peut initialiser avec des valeurs par défaut
-                // et les sauvegarder pour créer le document.
-                allTeams = [];
-                allBrassagePhases = [];
-                eliminationPhases = {};
-                currentSecondaryGroupsPreview = {};
-                eliminatedTeams = new Set();
-                currentDisplayedPhaseId = null;
-                matchOccurrenceMap = new Map(); // S'assurer qu'elle est réinitialisée aussi
-                saveAllDataToFirestore(); // Crée le document initial dans Firestore
-                handleLocationHash(); // Rendre la page vide
-            }
-        }, (error) => {
-            console.error("Erreur lors de l'écoute des données Firestore:", error);
-            showMessage(document.getElementById('message') || APP_CONTAINER, "Erreur de synchronisation des données.", true);
-        });
+        console.log("DEBUG: currentSecondaryGroupsPreview sauvegardé:", currentSecondaryGroupsPreview);
     }
+
+    // NOUVEAU: Sauvegarde les équipes éliminées
+    function saveEliminatedTeams() {
+        localStorage.setItem(ELIMINATED_TEAMS_KEY, JSON.stringify(Array.from(eliminatedTeams)));
+        console.log("DEBUG: Équipes éliminées sauvegardées:", eliminatedTeams);
+    }
+
 
     /**
      * Rebuilds the match occurrence map.
@@ -740,7 +699,7 @@
 
                             teamToEdit.name = newName;
                             teamToEdit.level = newLevel;
-                            saveAllDataToFirestore(); // Utilisation de la fonction de sauvegarde Firestore
+                            saveTeams();
                             renderTeams();
                             showMessage(messageElement, `Équipe "${escapeHtml(newName)}" mise à jour.`);
                         });
@@ -759,9 +718,10 @@
 
                         showModal('Confirmer la suppression', messageContent, () => {
                             allTeams = allTeams.filter(team => team.id !== teamId);
-                            // Supprimer l'équipe des éliminées si elle y était
+                            // NOUVEAU: Supprimer l'équipe des éliminées si elle y était
                             eliminatedTeams.delete(teamId);
-                            saveAllDataToFirestore(); // Utilisation de la fonction de sauvegarde Firestore
+                            saveEliminatedTeams();
+                            saveTeams();
                             renderTeams();
                             showMessage(messageElement, `Équipe "${escapeHtml(teamToDelete.name)}" supprimée.`);
                         }, true);
@@ -794,7 +754,7 @@
                 level: level
             };
             allTeams.push(newTeam);
-            saveAllDataToFirestore(); // Utilisation de la fonction de sauvegarde Firestore
+            saveTeams();
             renderTeams();
             teamNameInput.value = '';
             teamLevelInput.value = '5';
@@ -808,8 +768,9 @@
 
             showModal('Confirmer la suppression de toutes les équipes', messageContent, () => {
                 allTeams = [];
-                eliminatedTeams.clear(); // Effacer toutes les équipes éliminées
-                saveAllDataToFirestore(); // Utilisation de la fonction de sauvegarde Firestore
+                eliminatedTeams.clear(); // NOUVEAU: Effacer toutes les équipes éliminées
+                saveEliminatedTeams(); // NOUVEAU: Sauvegarder
+                saveTeams();
                 renderTeams();
                 showMessage(messageElement, "Toutes les équipes ont été supprimées.");
             }, true);
@@ -859,7 +820,7 @@
 
                 if (importedCount > 0) {
                     allTeams.push(...newTeams);
-                    saveAllDataToFirestore(); // Utilisation de la fonction de sauvegarde Firestore
+                    saveTeams();
                     renderTeams();
                     let successMsg = `${importedCount} équipe(s) importée(s) avec succès.`;
                     if (skippedNames.length > 0) {
@@ -1405,7 +1366,7 @@
                                      showMessage(messageElement, "Un match ne peut pas être un match nul. Veuillez entrer un vainqueur.", true);
                                 }
                             }
-                            saveAllDataToFirestore(); // Utilisation de la fonction de sauvegarde Firestore
+                            saveBrassagePhases(); // This will rebuild the matchOccurrenceMap
                             renderPhaseHistory(); // To update next phase button visibility
 
                             const team1Span = matchDiv.querySelector('span[data-team-role="team1-name"]');
@@ -1544,7 +1505,7 @@
          * Updates the visibility and message of the "Create next brassage phase" button.
          */
         function updateNextPhaseButtonVisibility() {
-            const currentBasis = localStorage.getItem('volleyPoolGenerationBasis');
+            const currentBasis = localStorage.getItem(POOL_GENERATION_BASIS_KEY);
             const initialOrSecondaryPhases = allBrassagePhases.filter(p => p.type === PHASE_TYPE_INITIAL || p.type === PHASE_TYPE_SECONDARY_BRASSAGE);
             initialOrSecondaryPhases.sort((a,b) => a.timestamp - b.timestamp);
 
@@ -1583,7 +1544,7 @@
                 generateSecondaryBrassagesBtn.classList.add('hidden');
                 refreshSecondaryGroupScoresBtn.classList.add('hidden'); // Hide refresh button
                 currentSecondaryGroupsPreview = {}; // Clear preview if invalid selection
-                saveAllDataToFirestore(); // Utilisation de la fonction de sauvegarde Firestore
+                saveSecondaryGroupsPreview();
                 return;
             }
 
@@ -1673,7 +1634,7 @@
             const selectedGroupNames = groupNamesMap[numGroupsValue];
             
             renderSecondaryGroupsPreview(selectedGroupNames); // This will redraw the display with updated scores
-            saveAllDataToFirestore(); // Utilisation de la fonction de sauvegarde Firestore
+            saveSecondaryGroupsPreview(); // Save the updated scores in the preview data
 
             if (displayUpdated) {
                 showMessage(secondaryPreviewMessage, "Scores des groupes secondaires actualisés avec les dernières données de classement.", false);
@@ -1688,7 +1649,7 @@
             allBrassagePhases = allBrassagePhases.filter(phase => phase.id !== phaseIdToDelete);
 
             if (allBrassagePhases.length < initialLength) {
-                saveAllDataToFirestore(); // Utilisation de la fonction de sauvegarde Firestore
+                saveBrassagePhases(); // This will rebuild the matchOccurrenceMap
                 renderPhaseHistory();
                 showMessage(messageElement, "La phase a été supprimée avec succès !");
 
@@ -1825,8 +1786,8 @@
 
             // Get the user's selected pool generation basis directly from localStorage
             // We read it fresh every time to avoid caching issues.
-            const selectedBasis = localStorage.getItem('volleyPoolGenerationBasis');
-            console.log(`DEBUG: User's selected basis from localStorage (volleyPoolGenerationBasis): "${selectedBasis}"`);
+            const selectedBasis = localStorage.getItem(POOL_GENERATION_BASIS_KEY);
+            console.log(`DEBUG: User's selected basis from localStorage (POOL_GENERATION_BASIS_KEY): "${selectedBasis}"`);
 
             let effectiveUseInitialLevels;
 
@@ -1942,7 +1903,7 @@
             if (phaseIndex > -1) {
                 allBrassagePhases[phaseIndex].pools = bestPools;
                 allBrassagePhases[phaseIndex].generated = true; 
-                saveAllDataToFirestore(); // Utilisation de la fonction de sauvegarde Firestore
+                saveBrassagePhases(); // This will rebuild the matchOccurrenceMap
                 renderPhaseHistory();
                 renderPoolsWithCurrentSettings(bestPools, allBrassagePhases[phaseIndex].name, phaseIdToUpdate);
 
@@ -1976,7 +1937,7 @@
                 generateSecondaryBrassagesBtn.classList.add('hidden');
                 refreshSecondaryGroupScoresBtn.classList.add('hidden'); // Hide refresh button
                 currentSecondaryGroupsPreview = {}; // Clear preview if invalid selection
-                saveAllDataToFirestore(); // Utilisation de la fonction de sauvegarde Firestore
+                saveSecondaryGroupsPreview();
                 return;
             }
 
@@ -1988,7 +1949,7 @@
                 generateSecondaryBrassagesBtn.classList.add('hidden');
                 refreshSecondaryGroupScoresBtn.classList.add('hidden'); // Hide refresh button
                 currentSecondaryGroupsPreview = {}; // Clear preview if no rankings
-                saveAllDataToFirestore(); // Utilisation de la fonction de sauvegarde Firestore
+                saveSecondaryGroupsPreview();
                 return;
             }
 
@@ -2023,7 +1984,7 @@
             }
 
             renderSecondaryGroupsPreview(selectedGroupNames);
-            saveAllDataToFirestore(); // Utilisation de la fonction de sauvegarde Firestore
+            saveSecondaryGroupsPreview(); // Save the newly generated preview
             showMessage(secondaryPreviewMessage, `Création des ${numGroups} groupes de niveau terminée. Ajustez si nécessaire.`);
         }
 
@@ -2091,9 +2052,9 @@
                     eliminatedTeams.add(teamId);
                     showMessage(secondaryPreviewMessage, `${escapeHtml(teamName)} éliminée.`);
                 }
-                saveAllDataToFirestore(); // Utilisation de la fonction de sauvegarde Firestore
+                saveEliminatedTeams();
                 // Re-render la prévisualisation des groupes secondaires pour que les changements soient visibles
-                const numGroupsValue = parseInt(localStorage.getItem('volleySecondaryGroupsSelection') || numberOfSecondaryGroupsInput.value);
+                const numGroupsValue = parseInt(numberOfSecondaryGroupsInput.value);
                 const groupNamesMap = { 2: ["Principale", "Consolante"], 3: ["Principale", "Consolante", "Super Consolante"] };
                 renderSecondaryGroupsPreview(groupNamesMap[numGroupsValue]);
                 hideModal(); // Cacher la modale après l'action
@@ -2168,10 +2129,10 @@
                 // Re-sort the destination group to maintain rank order for display/future logic
                 currentSecondaryGroupsPreview[toGroup].sort((a, b) => b.totalPoints - a.totalPoints || b.totalDiffScore - a.totalDiffScore);
 
-                const numGroupsValue = parseInt(localStorage.getItem('volleySecondaryGroupsSelection') || numberOfSecondaryGroupsInput.value);
+                const numGroupsValue = parseInt(numberOfSecondaryGroupsInput.value);
                 const groupNamesMap = { 2: ["Principale", "Consolante"], 3: ["Principale", "Consolante", "Super Consolante"] };
                 renderSecondaryGroupsPreview(groupNamesMap[numGroupsValue]);
-                saveAllDataToFirestore(); // Utilisation de la fonction de sauvegarde Firestore
+                saveSecondaryGroupsPreview(); // Save the state after manual move
                 showMessage(secondaryPreviewMessage, `Équipe ${escapeHtml(teamToMove.name)} déplacée vers ${escapeHtml(toGroup)}.`);
 
             } else {
@@ -2191,7 +2152,7 @@
                 }
 
                 // Remove only existing elimination seeding phases to avoid duplicates if re-validating
-                allBrassagePhases = allBrassagePhases.filter(p => p.type !== PHASE_TYPE_ELIMINATION_SEEDING);
+                allBrassagePhases = allBrassagePhases.filter(p => p.type === PHASE_TYPE_ELIMINATION_SEEDING);
 
                 const eliminationSeedingPhase = {
                     id: `${PHASE_TYPE_ELIMINATION_SEEDING}_${Date.now()}`,
@@ -2202,7 +2163,7 @@
                     generated: true // Mark as generated/validated
                 };
                 allBrassagePhases.push(eliminationSeedingPhase);
-                saveAllDataToFirestore(); // Utilisation de la fonction de sauvegarde Firestore
+                saveBrassagePhases(); // This will rebuild the matchOccurrenceMap
                 showMessage(secondaryPreviewMessage, "Répartition des groupes validée et enregistrée pour les éliminatoires !");
             });
         }
@@ -2251,10 +2212,10 @@
                 
                 // Clear any existing secondary groups preview data
                 currentSecondaryGroupsPreview = {}; 
-                saveAllDataToFirestore(); // Utilisation de la fonction de sauvegarde Firestore
+                saveSecondaryGroupsPreview();
 
                 // Remove only existing elimination seeding phases to avoid duplicates if re-validating
-                allBrassagePhases = allBrassagePhases.filter(p => p.type !== PHASE_TYPE_ELIMINATION_SEEDING);
+                allBrassagePhases = allBrassagePhases.filter(p => p.type === PHASE_TYPE_ELIMINATION_SEEDING);
 
                 const eliminationSeedingPhase = {
                     id: `${PHASE_TYPE_ELIMINATION_SEEDING}_${Date.now()}_direct`,
@@ -2266,7 +2227,7 @@
                 };
 
                 allBrassagePhases.push(eliminationSeedingPhase);
-                saveAllDataToFirestore(); // Utilisation de la fonction de sauvegarde Firestore
+                saveBrassagePhases(); // This will rebuild the matchOccurrenceMap
                 showMessage(directEliminationMessage, "Toutes les équipes éligibles validées pour l'élimination directe !");
                 window.location.hash = '#eliminatoires'; // Redirect to elimination page
             }, true); // Use red style for confirmation as it overwrites
@@ -2343,7 +2304,7 @@
 
             if (!generationFailed && newPhases.length > 0 && newPhases.length === numGroups) {
                 allBrassagePhases.push(...newPhases);
-                saveAllDataToFirestore(); // Utilisation de la fonction de sauvegarde Firestore
+                saveBrassagePhases(); // This will rebuild the matchOccurrenceMap
                 renderPhaseHistory();
                 renderPoolsWithCurrentSettings(newPhases[0].pools, newPhases[0].name, newPhases[0].id);
                 showMessage(secondaryPreviewMessage, `${newPhases.length} phases de brassage secondaires générées avec succès !`);
@@ -2363,7 +2324,8 @@
             showModal('Confirmer la suppression de toutes les phases', messageContent, () => {
                 allBrassagePhases = [];
                 currentSecondaryGroupsPreview = {}; // Clear secondary groups preview
-                saveAllDataToFirestore(); // Utilisation de la fonction de sauvegarde Firestore
+                saveBrassagePhases(); // This will rebuild the matchOccurrenceMap
+                saveSecondaryGroupsPreview(); // Save the cleared preview
 
                 renderPhaseHistory();
                 poolsDisplay.innerHTML = '<p class="text-gray-500 text-center md:col-span-2">Les poules de la phase sélectionnée s\'afficheront ici.</p>';
@@ -2386,13 +2348,13 @@
         }
 
         // Load and set the dropdown for secondary groups
-        const savedSecondaryGroupsSelection = localStorage.getItem('volleySecondaryGroupsSelection');
+        const savedSecondaryGroupsSelection = localStorage.getItem(SECONDARY_GROUPS_SELECTION_KEY);
         if (savedSecondaryGroupsSelection) {
             numberOfSecondaryGroupsInput.value = savedSecondaryGroupsSelection;
         }
 
         // Initialize pool generation basis radio buttons
-        const savedPoolGenerationBasis = localStorage.getItem('volleyPoolGenerationBasis') || 'initialLevels';
+        const savedPoolGenerationBasis = localStorage.getItem(POOL_GENERATION_BASIS_KEY) || 'initialLevels';
         if (savedPoolGenerationBasis === 'previousResults') {
             basisPreviousResultsRadio.checked = true;
         } else {
@@ -2404,24 +2366,24 @@
 
         // Event listeners for basis selection
         basisInitialLevelsRadio.addEventListener('change', () => {
-            localStorage.setItem('volleyPoolGenerationBasis', 'initialLevels');
+            localStorage.setItem(POOL_GENERATION_BASIS_KEY, 'initialLevels');
             updatePoolGenerationBasisUI();
         });
 
         basisPreviousResultsRadio.addEventListener('change', () => {
-            localStorage.setItem('volleyPoolGenerationBasis', 'previousResults');
+            localStorage.setItem(POOL_GENERATION_BASIS_KEY, 'previousResults');
             updatePoolGenerationBasisUI();
         });
         
         function updatePoolGenerationBasisUI() {
-        let selectedBasis = localStorage.getItem('volleyPoolGenerationBasis');
+        let selectedBasis = localStorage.getItem(POOL_GENERATION_BASIS_KEY);
         console.log(`DEBUG: updatePoolGenerationBasisUI - Initial selectedBasis from localStorage: "${selectedBasis}"`);
 
         // Si selectedBasis est null (première charge) ou "null" (problème de sérialisation), définir une valeur par défaut.
         if (selectedBasis === null || selectedBasis === "null") {
             selectedBasis = 'initialLevels'; // Défaut à 'initialLevels'
-            localStorage.setItem('volleyPoolGenerationBasis', selectedBasis); // Enregistrer la valeur par défaut
-            console.log("DEBUG: volleyPoolGenerationBasis was null or 'null', defaulted to 'initialLevels' and saved to localStorage.");
+            localStorage.setItem(POOL_GENERATION_BASIS_KEY, selectedBasis); // Enregistrer la valeur par défaut
+            console.log("DEBUG: POOL_GENERATION_BASIS_KEY was null or 'null', defaulted to 'initialLevels' and saved to localStorage.");
         }
         console.log(`DEBUG: updatePoolGenerationBasisUI - Final selectedBasis after default check: "${selectedBasis}"`);
 
@@ -2454,7 +2416,7 @@
 
         createGlobalPhasesStructureBtn.addEventListener('click', () => {
             const numPhases = parseInt(numberOfGlobalPhasesInput.value);
-            const selectedBasis = localStorage.getItem('volleyPoolGenerationBasis');
+            const selectedBasis = localStorage.getItem(POOL_GENERATION_BASIS_KEY);
 
             if (allTeams.length === 0) {
                 showMessage(messageElement, "Aucune équipe n'a été ajoutée. Veuillez gérer les équipes d'abord.", true);
@@ -2507,7 +2469,7 @@
             }
             
             allBrassagePhases.push(...newGlobalPhases);
-            saveAllDataToFirestore(); // Utilisation de la fonction de sauvegarde Firestore
+            saveBrassagePhases(); // This will rebuild the matchOccurrenceMap
             localStorage.setItem('volleyTeamsPerPoolSetting', numPoolsInput.value);
             renderPhaseHistory();
             poolsDisplay.innerHTML = '<p class="text-gray-500 text-center md:col-span-2">Les poules de la phase sélectionnée s\'afficheront ici.</p>';
@@ -2523,7 +2485,7 @@
 
         // New event listener for creating the next phase when basis is previousResults
         createNextBrassagePhaseBtn.addEventListener('click', () => {
-            const selectedBasis = localStorage.getItem('volleyPoolGenerationBasis');
+            const selectedBasis = localStorage.getItem(POOL_GENERATION_BASIS_KEY);
             if (selectedBasis !== 'previousResults') {
                 showMessage(nextBrassagePhaseMessage, "Cette option n'est disponible que lorsque la génération est basée sur les résultats précédents.", true);
                 return;
@@ -2555,7 +2517,7 @@
             };
 
             allBrassagePhases.push(newPhase);
-            saveAllDataToFirestore(); // Utilisation de la fonction de sauvegarde Firestore
+            saveBrassagePhases(); // This will rebuild the matchOccurrenceMap
             renderPhaseHistory();
             showMessage(nextBrassagePhaseMessage, `Phase Globale ${nextPhaseNumber} créée avec succès !`);
         });
@@ -2569,7 +2531,7 @@
             validateSecondaryGroupsBtn.classList.add('hidden');
             generateSecondaryBrassagesBtn.classList.add('hidden');
             refreshSecondaryGroupScoresBtn.classList.add('hidden'); // Hide refresh button
-            saveAllDataToFirestore(); // Utilisation de la fonction de sauvegarde Firestore
+            saveSecondaryGroupsPreview(); // Save the cleared preview
         });
 
         validateSecondaryGroupsBtn.addEventListener('click', validateSecondaryGroupsForElimination);
@@ -2612,7 +2574,7 @@
 
         // NEW: On page load, if a secondary group preview exists, render it
         if (Object.keys(currentSecondaryGroupsPreview).length > 0) {
-            const numGroupsValue = parseInt(localStorage.getItem('volleySecondaryGroupsSelection') || numberOfSecondaryGroupsInput.value);
+            const numGroupsValue = parseInt(localStorage.getItem(SECONDARY_GROUPS_SELECTION_KEY) || numberOfSecondaryGroupsInput.value);
             const groupNamesMap = { 2: ["Principale", "Consolante"], 3: ["Principale", "Consolante", "Super Consolante"] };
             const selectedGroupNames = groupNamesMap[numGroupsValue];
             
@@ -2729,7 +2691,7 @@
             document.querySelectorAll('#eliminationTeamsList input[type="checkbox"]:checked').forEach(checkbox => {
                 eliminatedTeams.add(checkbox.dataset.teamId);
             });
-            saveAllDataToFirestore(); // Utilisation de la fonction de sauvegarde Firestore
+            saveEliminatedTeams();
             showMessage(eliminationSelectionMessage, "Sélection des équipes éliminées sauvegardée !");
             window.location.hash = '#eliminatoires';
         });
@@ -3139,7 +3101,7 @@
                 }
             }
 
-            saveAllDataToFirestore(); // Utilisation de la fonction de sauvegarde Firestore
+            saveEliminationPhases();
 
             // Visually update winner/loser classes
             const matchElement = document.querySelector(`[data-match-id="${matchId}"]`);
@@ -3246,7 +3208,7 @@
                     }
                 });
             });
-            saveAllDataToFirestore(); // Utilisation de la fonction de sauvegarde Firestore
+            saveEliminationPhases();
         }
 
         function generateAllEliminationPhases() {
@@ -3289,7 +3251,7 @@
                 }
             });
 
-            saveAllDataToFirestore(); // Utilisation de la fonction de sauvegarde Firestore
+            saveEliminationPhases();
             showMessage(eliminationMessage, "Phases éliminatoires générées avec succès !");
         }
 
@@ -3300,7 +3262,7 @@
 
             showModal('Confirmer la réinitialisation complète', messageContent, () => {
                 eliminationPhases = {};
-                saveAllDataToFirestore(); // Utilisation de la fonction de sauvegarde Firestore
+                saveEliminationPhases();
                 eliminationBracketsDisplay.innerHTML = '<p class="text-gray-500 text-center">Cliquez sur "Générer les Phases Éliminatoires" pour afficher les tournois.</p>';
                 showMessage(eliminationMessage, "Toutes les phases éliminatoires ont été réinitialisées.");
             }, true);
@@ -3320,7 +3282,7 @@
                     if (eligibleTeamsInGroup.length >= 2) {
                         const newBracketData = generateBracketData(eligibleTeamsInGroup, groupType);
                         eliminationPhases[groupType] = newBracketData;
-                        saveAllDataToFirestore(); // Utilisation de la fonction de sauvegarde Firestore
+                        saveEliminationPhases();
                         renderBracket(newBracketData, document.getElementById(groupType.toLowerCase() + 'Bracket'));
                         showMessage(eliminationMessage, `Phase éliminatoire pour le groupe "${escapeHtml(groupType)}" réinitialisée.`);
                     } else {
@@ -3547,7 +3509,7 @@
         '#equipes': renderEquipesPage,
         '#brassages': renderBrassagesPage,
         '#eliminatoires': renderEliminatoiresPage,
-        '#elimination-selection': renderEliminationSelectionPage, // Route pour la sélection des équipes éliminées
+        '#elimination-selection': renderEliminationSelectionPage, // NOUVEAU: Route pour la sélection des équipes éliminées
         '#classements': renderClassementsPage,
     };
 
@@ -3575,41 +3537,15 @@
 
     // --- Initialisation de l'Application ---
     document.addEventListener('DOMContentLoaded', () => {
-        // La fonction loadAllData() est maintenant appelée par le script Firebase dans index.html
-        // après que window.db et window.userId sont disponibles.
-        // handleLocationHash() est également appelée par loadAllData().
+        loadAllData(); // Charger toutes les données au démarrage
+        handleLocationHash(); // Rendre la page initiale
 
         // Écouter les changements de hash dans l'URL pour le routage
         window.addEventListener('hashchange', handleLocationHash);
 
         // Attacher les gestionnaires d'événements pour les boutons de la modale globale
-        // Assurez-vous que modalCancelBtn est bien référencé
-        if (modalCancelBtn) {
-            modalCancelBtn.addEventListener('click', hideModal);
-        } else {
-            console.error("modalCancelBtn non trouvé au chargement du DOM. La modale pourrait ne pas fonctionner correctement.");
-        }
+        modalCancelBtn.addEventListener('click', hideModal);
 
-        // Ajout de la transparence à la barre de navigation lors du défilement
-        const navBar = document.querySelector('nav');
-        if (navBar) {
-            let isScrolled = false;
-            window.addEventListener('scroll', () => {
-                if (window.scrollY > 0) {
-                    if (!isScrolled) {
-                        navBar.classList.add('bg-blue-700/70', 'transition-colors', 'duration-300'); // Plus transparent
-                        navBar.classList.remove('bg-blue-700/90');
-                        isScrolled = true;
-                    }
-                } else {
-                    if (isScrolled) {
-                        navBar.classList.remove('bg-blue-700/70');
-                        navBar.classList.add('bg-blue-700/90'); // Moins transparent
-                        isScrolled = false;
-                    }
-                }
-            });
-        }
     });
 
 })();
