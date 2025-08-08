@@ -2573,7 +2573,7 @@ const db = getFirestore(app);
                 </p>
             </div>
 			<div class="max-w-2xl mx-auto bg-white p-8 rounded-lg shadow-xl border border-teal-200 mt-12 text-center">
-                    <h2 class="text-3xl font-bold text-teal-700 mb-4">Une Tournoi à la Mêlée ?</h2>
+                    <h2 class="text-3xl font-bold text-teal-700 mb-4">Un Tournoi à la Mêlée ?</h2>
                     <p class="text-lg text-gray-700 mb-6">
                         Envie d'un tournoi où les joueurs sont mélangés à chaque tour ?<br>
                         
@@ -4702,3 +4702,4 @@ function renderPools(pools, phaseName = "Poules Actuelles", phaseId = null, show
 	window.loadTournamentDataById = fetchAndListenToTournamentData;
 
 })();
+
