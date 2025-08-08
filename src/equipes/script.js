@@ -2537,7 +2537,7 @@ const db = getFirestore(app);
 
                 <div class="bg-orange-50 p-6 rounded-lg shadow-md border border-orange-200 md:col-span-2">
                     <h2 class="text-2xl font-semibold text-orange-800 mb-3 flex items-center">
-                        <i class="fas fa-mobile-alt mr-3 text-orange-600"></i> Arbitrage Simplifié 📱
+                        <i class="fas fa-mobile-alt mr-3 text-orange-600"></i> Arbitrage Simplifié
                     </h2>
                     <p class="text-orange-700">
                         Générez des liens uniques pour chaque poule ou match éliminatoire et partagez-les. Les arbitres ou les équipes saisissent les scores en direct sur leur smartphone via une interface simple, vous libérant de cette tâche pour mieux vous concentrer sur l'organisation générale.
@@ -4702,3 +4702,4 @@ function renderPools(pools, phaseName = "Poules Actuelles", phaseId = null, show
 	window.loadTournamentDataById = fetchAndListenToTournamentData;
 
 })();
+
