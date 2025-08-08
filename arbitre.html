@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Saisie des Scores - Arbitre</title>
+    <link rel="icon" href="Images/Logo_EsayPlay.png" type="image/png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body { background-color: #f3f4f6; }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <main id="arbitre-container" class="max-w-2xl mx-auto p-4 sm:p-8">
+        <div class="text-center">
+            <img src="Images/Logo_EsayPlay.png" alt="Logo" class="h-20 w-auto mb-6 mx-auto">
+            <h1 id="pool-name-title" class="text-3xl font-bold text-gray-800">Chargement des rencontres...</h1>
+        </div>
+        <div id="matches-list" class="mt-8 space-y-6">
+            </div>
+    </main>
+
+    <div id="actionModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 id="modalTitle" class="text-xl font-bold mb-4"></h3>
+            <div id="modalBody" class="mb-6"></div>
+            <div class="flex justify-end space-x-4">
+                <button id="modalCancelBtn" class="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400">Annuler</button>
+                <button id="modalConfirmBtn" class="px-4 py-2 rounded text-white bg-blue-600 hover:bg-blue-700">Confirmer</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-container" class="fixed top-4 right-4 z-[100]"></div>
+
+    <script type="module">
+        // Configuration et initialisation de Firebase
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+        import { getFirestore, doc, onSnapshot, updateDoc } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyA1AoHpUpvD12YUzLe91SWNpxmPRPB36aQ",
+            authDomain: "easyplayapp-97e15.firebaseapp.com",
+            projectId: "easyplayapp-97e15",
+            storageBucket: "easyplayapp-97e15.firebasestorage.app",
+            messagingSenderId: "741324257784",
+            appId: "1:741324257784:web:06a85e1f10b8dc804afe0d",
+        };
+
+        try {
+            const app = initializeApp(firebaseConfig);
+            window.db = getFirestore(app);
+            window.doc = doc;
+            window.onSnapshot = onSnapshot;
+            window.updateDoc = updateDoc;
+
+            // Indiquer au script principal que Firebase est prêt
+            if (typeof window.onArbitreFirebaseReady === 'function') {
+                window.onArbitreFirebaseReady();
+            }
+        } catch (error) {
+            console.error("Erreur d'initialisation Firebase:", error);
+            document.getElementById('pool-name-title').textContent = 'Erreur de connexion à la base de données.';
+        }
+    </script>
+    <script type="module" src="arbitre.js"></script>
+</body>
+</html>
