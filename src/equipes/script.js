@@ -377,16 +377,21 @@ const db = getFirestore(app);
 			window.cleanupFirestoreListeners();
 		}
 
+		// Si l'utilisateur n'est PAS connecté (mode invité)
 		if (!window.userId) {
 			AppState.isGuestMode = true;
-			loadDataFromLocalStorage();
-			handleLocationHash();
-			return;
+			loadDataFromLocalStorage(); // On charge les données locales
+			handleLocationHash();       // On affiche la bonne page
+			return; // On arrête la fonction ici pour ne pas contacter Firebase.
 		}
 
+		// Si l'utilisateur EST connecté
 		AppState.isGuestMode = false;
 		const userPrivateDataRef = getUserPrivateDataRef();
-		if (!userPrivateDataRef) return;
+		if (!userPrivateDataRef) {
+            // Si on ne peut pas obtenir la référence, on ne fait rien pour éviter une erreur.
+            return;
+        };
 
 		// On écoute le profil de l'utilisateur pour connaître les tournois actifs
 		AppState.listeners.currentUserPrivateData = window.onSnapshot(userPrivateDataRef, async (docSnap) => {
@@ -398,7 +403,11 @@ const db = getFirestore(app);
 			const tournamentIdToLoad = currentHash.startsWith('#melee') ? AppState.auth.activeMeleeTournamentId : AppState.auth.activeTeamTournamentId;
 
 			await fetchAndListenToTournamentData(tournamentIdToLoad);
-		});
+		}, (error) => {
+            // Ajout d'un gestionnaire d'erreur pour le snapshot
+            console.error("Erreur d'écoute sur les données privées de l'utilisateur:", error);
+            showToast("Impossible de charger les données de l'utilisateur.", "error");
+        });
 
 		await fetchUserTournamentsList();
 	}
@@ -495,6 +504,13 @@ const db = getFirestore(app);
      * @param {string} tournamentId L'ID du tournoi à charger.
      */
 	async function fetchAndListenToTournamentData(tournamentId) {
+        // NOUVELLE GARDE DE SÉCURITÉ : On vérifie l'état de connexion AU DÉBUT de la fonction.
+        if (!window.userId || AppState.isGuestMode) {
+            console.warn("Appel à fetchAndListenToTournamentData ignoré car l'utilisateur est en mode invité.");
+            // On ne fait rien si on est en mode invité, car les données sont déjà gérées localement.
+            return;
+        }
+
 		if (AppState.listeners.currentTournament) AppState.listeners.currentTournament();
 
 		if (!tournamentId) {
@@ -511,23 +527,41 @@ const db = getFirestore(app);
 			if (docSnap.exists()) {
 				AppState.teamTournament.currentData = { id: docSnap.id, ...docSnap.data() };
 
+				// --- DÉBUT DE LA CORRECTION ---
+
 				if (AppState.teamTournament.currentData.type === 'equipe') {
+					// Logique existante pour les tournois par équipe
 					AppState.teamTournament.allTeams = AppState.teamTournament.currentData.allTeams || [];
 					AppState.teamTournament.allBrassagePhases = AppState.teamTournament.currentData.allBrassagePhases || [];
 					AppState.teamTournament.eliminationPhases = AppState.teamTournament.currentData.eliminationPhases || {};
 					AppState.teamTournament.poolGenerationBasis = AppState.teamTournament.currentData.poolGenerationBasis || 'initialLevels';
-				} else {
+					
+					// On s'assure que les données de la mêlée sont vides pour éviter les conflits
+					if (typeof window.onMeleeDataUpdate === 'function') {
+						window.onMeleeDataUpdate(null);
+					}
+
+				} else if (AppState.teamTournament.currentData.type === 'melee') {
+					// NOUVELLE LOGIQUE : On passe les données au module Mêlée
+					if (typeof window.onMeleeDataUpdate === 'function') {
+						// On envoie l'objet `meleeData` à la fonction de mise à jour du module Mêlée
+						window.onMeleeDataUpdate(AppState.teamTournament.currentData.meleeData || {});
+					}
+					// On s'assure que les données du tournoi par équipe sont vides
 					AppState.teamTournament.allTeams = [];
 					AppState.teamTournament.allBrassagePhases = [];
 					AppState.teamTournament.eliminationPhases = {};
 				}
+				
+				// --- FIN DE LA CORRECTION ---
 
 				rebuildMatchOccurrenceMap();
 				updateTournamentDisplay();
 				updateNavLinksVisibility();
 
-				if (typeof window.meleeDataLoaded === 'function') {
-					window.meleeDataLoaded();
+				// On force le rafraichissement de la page mêlée si on est dessus pour que les données s'affichent
+				if (window.location.hash.startsWith('#melee') && typeof window.rerenderMeleePage === 'function') {
+					window.rerenderMeleePage();
 				}
 
 				handleLocationHash();
@@ -750,7 +784,7 @@ const db = getFirestore(app);
 
 			// On ajoute une étiquette pour le type Mêlée
 			if (AppState.teamTournament.currentData.type === 'melee') {
-				nameDisplay += ' (Mêlée)';
+				nameDisplay;
 			} else if (AppState.isGuestMode) {
 				nameDisplay += ' (Invité)';
 			}
@@ -1420,7 +1454,8 @@ const db = getFirestore(app);
                         team2Name: pool.teams[t2_idx].name,
                         score1: null,
                         score2: null,
-                        winnerId: null
+                        winnerId: null,
+						scoreValide: false
                     });
                 }
             }
@@ -2450,99 +2485,111 @@ const db = getFirestore(app);
      * Affiche la page d'accueil du tournoi.
      */
     function renderHomePage() {
-        APP_CONTAINER.innerHTML = `
-            <div class="max-w-5xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-                <h1 class="text-4xl font-extrabold text-center text-blue-700 mb-8 leading-tight">
-                    Marre des casse-têtes<img src="Images/explosion.png" alt="emoji casse-tête" class="inline-block w-12 h-12 align-middle mx-1">pour organiser vos tournois ?<br>
-                    Cette App est là pour simplifier la vie des organisateurs de tournois !<img src="Images/content.png" alt="emoji casse-tête" class="inline-block w-15 h-12 align-middle mx-1">
-                </h1>
+    APP_CONTAINER.innerHTML = `
+        <div class="max-w-5xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+            <h1 class="text-4xl font-extrabold text-center text-blue-700 mb-8 leading-tight">
+                Marre des casse-têtes<img src="Images/explosion.png" alt="emoji casse-tête" class="inline-block w-12 h-12 align-middle mx-1">pour organiser vos tournois ?<br>
+                Cette App est là pour simplifier la vie des organisateurs de tournois !<img src="Images/content.png" alt="emoji casse-tête" class="inline-block w-15 h-12 align-middle mx-1">
+            </h1>
 
-                <p class="text-xl text-gray-700 text-center mb-12">
-                    Gagnez du temps, réduisez les erreurs et offrez une expérience fluide à vos participants.
-                    Concentrez-vous sur le jeu, on s'occupe du reste.
-                </p>
+            <p class="text-xl text-gray-700 text-center mb-12">
+                Gagnez du temps, réduisez les erreurs et offrez une expérience fluide à vos participants.
+                Concentrez-vous sur le jeu, on s'occupe du reste.
+            </p>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
-                    <div class="bg-blue-50 p-6 rounded-lg shadow-md border border-blue-200">
-                        <h2 class="text-2xl font-semibold text-blue-800 mb-3 flex items-center">
-                            <i class="fas fa-users mr-3 text-blue-600"></i> Gestion Simplifiée
-                        </h2>
-                        <p class="text-blue-700">
-                            Ajoutez, modifiez ou supprimez vos équipes et définissez leurs niveaux initiaux.
-                            Importez facilement vos listes depuis un fichier Excel.
-                        </p>
-                    </div>
-                    <div class="bg-green-50 p-6 rounded-lg shadow-md border border-green-200">
-                        <h2 class="text-2xl font-semibold text-green-800 mb-3 flex items-center">
-                            <i class="fas fa-sitemap mr-3 text-green-600"></i> Organisation des Phases
-                        </h2>
-                        <p class="text-green-700">
-                            Créez et suivez vos phases de brassage et éliminatoires.
-                            L'application vous guide à chaque étape, des poules aux matchs finaux.
-                        </p>
-                    </div>
-                    <div class="bg-purple-50 p-6 rounded-lg shadow-md border border-purple-200">
-                        <h2 class="text-2xl font-semibold text-purple-800 mb-3 flex-center">
-                            <i class="fas fa-list-ol mr-3 text-purple-600"></i> Classements Automatiques
-                        </h2>
-                        <p class="text-purple-700">
-                            Saisissez les scores et laissez l'application calculer les classements en temps réel.
-                            Visualisez les performances des équipes tout au long du tournoi.
-                        </p>
-                    </div>
-                    <div class="bg-yellow-50 p-6 rounded-lg shadow-md border border-yellow-200">
-                        <h2 class="text-2xl font-semibold text-yellow-800 mb-3 flex items-center">
-                            <i class="fas fa-tools mr-3 text-yellow-600"></i> Flexibilité des Brassages
-                        </h2>
-                        <p class="text-yellow-700">
-                            Choisissez entre un brassage basé sur les niveaux initiaux des équipes,
-                            ou sur les résultats cumulés des phases précédentes pour une progression équitable.
-                            Possibilité d'ajuster des groupes secondaires pour les éliminatoires.
-                        </p>
-                    </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+                <div class="bg-blue-50 p-6 rounded-lg shadow-md border border-blue-200">
+                    <h2 class="text-2xl font-semibold text-blue-800 mb-3 flex items-center">
+                        <i class="fas fa-users mr-3 text-blue-600"></i> Gestion Simplifiée
+                    </h2>
+                    <p class="text-blue-700">
+                        Ajoutez, modifiez ou supprimez vos équipes et définissez leurs niveaux initiaux.
+                        Importez facilement vos listes depuis un fichier Excel.
+                    </p>
                 </div>
-
-                <div class="bg-gray-100 p-6 rounded-lg shadow-inner border border-gray-300 text-gray-800 max-w-2xl mx-auto">
-                    <h3 class="text-xl font-bold mb-4 text-center">Comment ça Marche ? (Les Règles du Jeu)</h3>
-                    <ul class="list-disc list-inside space-y-2 mb-4">
-                        <li>
-                            <strong class="text-blue-700">Système de Points :</strong>
-                            <ul class="list-disc list-inside ml-4 mt-1 text-sm">
-                                <li>Équipe gagnante : 8 points.</li>
-                                <li>Équipe perdante de 1 à 3 points d'écart : 4 points.</li>
-                                <li>Équipe perdante de 4 à 6 points d'écart : 3 points.</li>
-                                <li>Équipe perdante de 7 à 9 points d'écart : 2 points.</li>
-                                <li>Équipe perdante de 10 points ou plus d'écart : 1 point.</li>
-                            </ul>
-                        </li>
-                        <li>
-                            <strong class="text-blue-700">Phases de Brassage :</strong> Tous les points et scores de tous les matchs joués dans les phases de brassage précédentes pourraient être <strong class="bg-gray-100">intégralement pris en compte</strong> pour la génération des poules des phases de brassage suivantes et pour le classement général.
-                        </li>
-                        <li>
-                            <strong class="text-blue-700">Classement Éliminatoire :</strong> Le classement utilisé pour la phase éliminatoire est basé sur le <strong class="bg-gray-100">cumul de tous les points et scores</strong> des phases de brassage initiales et secondaires terminées, assurant une progression juste des meilleures équipes.
-                        </li>
-                    </ul>
-                    <p class="text-sm text-center italic text-gray-600 mt-4">
-                        Notre objectif est de rendre l'organisation transparente et efficace !
+                <div class="bg-green-50 p-6 rounded-lg shadow-md border border-green-200">
+                    <h2 class="text-2xl font-semibold text-green-800 mb-3 flex items-center">
+                        <i class="fas fa-sitemap mr-3 text-green-600"></i> Organisation des Phases
+                    </h2>
+                    <p class="text-green-700">
+                        Créez et suivez vos phases de brassage et éliminatoires.
+                        L'application vous guide à chaque étape, des poules aux matchs finaux.
+                    </p>
+                </div>
+                <div class="bg-purple-50 p-6 rounded-lg shadow-md border border-purple-200">
+                    <h2 class="text-2xl font-semibold text-purple-800 mb-3 flex-center">
+                        <i class="fas fa-list-ol mr-3 text-purple-600"></i> Classements Automatiques
+                    </h2>
+                    <p class="text-purple-700">
+                        Saisissez les scores et laissez l'application calculer les classements en temps réel.
+                        Visualisez les performances des équipes tout au long du tournoi.
+                    </p>
+                </div>
+                <div class="bg-yellow-50 p-6 rounded-lg shadow-md border border-yellow-200">
+                    <h2 class="text-2xl font-semibold text-yellow-800 mb-3 flex items-center">
+                        <i class="fas fa-tools mr-3 text-yellow-600"></i> Flexibilité des Brassages
+                    </h2>
+                    <p class="text-yellow-700">
+                        Choisissez entre un brassage basé sur les niveaux initiaux des équipes,
+                        ou sur les résultats cumulés des phases précédentes pour une progression équitable.
                     </p>
                 </div>
 
-                <div class="max-w-2xl mx-auto bg-white p-8 rounded-lg shadow-xl border border-teal-200 mt-12 text-center">
-                    <h2 class="text-3xl font-bold text-teal-700 mb-4">Tournoi à la Mêlée !</h2>
+                <div class="bg-orange-50 p-6 rounded-lg shadow-md border border-orange-200 md:col-span-2">
+                    <h2 class="text-2xl font-semibold text-orange-800 mb-3 flex items-center">
+                        <i class="fas fa-mobile-alt mr-3 text-orange-600"></i> Arbitrage Simplifié 📱
+                    </h2>
+                    <p class="text-orange-700">
+                        Générez des liens uniques pour chaque poule ou match éliminatoire et partagez-les. Les arbitres ou les équipes saisissent les scores en direct sur leur smartphone via une interface simple, vous libérant de cette tâche pour mieux vous concentrer sur l'organisation générale.
+                    </p>
+                </div>
+                </div>
+
+            <div class="bg-gray-100 p-6 rounded-lg shadow-inner border border-gray-300 text-gray-800 max-w-2xl mx-auto">
+                <h3 class="text-xl font-bold mb-4 text-center">Comment ça Marche ? (Les Règles du Jeu)</h3>
+                <ul class="list-disc list-inside space-y-2 mb-4">
+                    <li>
+                        <strong class="text-blue-700">Système de Points :</strong>
+                        <ul class="list-disc list-inside ml-4 mt-1 text-sm">
+                            <li>Équipe gagnante : <b>8 points.</b></li>
+                            <li>Équipe perdante (écart de 1 à 3 pts) : <b>4 points.</b></li>
+                            <li>Équipe perdante (écart de 4 à 6 pts) : <b>3 points.</b></li>
+                            <li>Équipe perdante (écart de 7 à 9 pts) : <b>2 points.</b></li>
+                            <li>Équipe perdante (écart de 10+ pts) : <b>1 point.</b></li>
+                        </ul>
+                        <p class="text-sm italic text-gray-600 mt-2 ml-4">
+                            Ce système de points permet de faire un classement plus précis et surtout de <b>récompenser "les bons perdants"</b>, ceux qui se donnent à fond et ne baissent pas les bras même s'ils perdent.
+                        </p>
+                    </li>
+                    <li>
+                        <strong class="text-blue-700">Phases de Brassage :</strong> Tous les points et scores de tous les matchs joués dans les phases de brassage précédentes pourraient être <strong class="bg-gray-100">intégralement pris en compte</strong> pour la génération des poules des phases de brassage suivantes et pour le classement général.
+                    </li>
+                    <li>
+                        <strong class="text-blue-700">Classement Éliminatoire :</strong> Le classement utilisé pour la phase éliminatoire est basé sur le <strong class="bg-gray-100">cumul de tous les points et scores</strong> des phases de brassage initiales et secondaires terminées, assurant une progression juste des meilleures équipes.
+                    </li>
+                </ul>
+                <p class="text-sm text-center italic text-gray-600 mt-4">
+                    Notre objectif est de rendre l'organisation transparente et efficace !
+                </p>
+            </div>
+			<div class="max-w-2xl mx-auto bg-white p-8 rounded-lg shadow-xl border border-teal-200 mt-12 text-center">
+                    <h2 class="text-3xl font-bold text-teal-700 mb-4">Un Tournoi à la Mêlée ?</h2>
                     <p class="text-lg text-gray-700 mb-6">
                         Envie d'un tournoi où les joueurs sont mélangés à chaque tour ?<br>
-                        Lancez un tournoi à la mêlée !
+                        
                     </p>
                     <a href="#melee" class="inline-block bg-teal-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-teal-700 transition duration-300 ease-in-out shadow-lg">
-                        <i class="fas fa-random mr-2"></i> Gérer un Tournoi à la Mêlée
+                        <i class="fas fa-random mr-2"></i> C'est par ici ...
                     </a>
                 </div>
+			</div>     
                 <p class="text-2xl text-center font-extrabold text-blue-700 mt-12">
                     Prêt(e) à révolutionner vos tournois ? Accroche-toi, l'aventure commence maintenant ! <img src="Images/voila.png" alt="emoji casse-tête" class="inline-block w-12 h-12 align-middle mx-1">
                 </p>
             </div>
-        `;
-    }
+			
+		`;
+	}
 
     function renderEquipesPage() {
         let levelCounts = {};
@@ -3108,122 +3155,151 @@ const db = getFirestore(app);
         showToast(`La phase "${escapeHtml(phaseName)}" a été supprimée.`, "success");
     }
 
-    function renderPools(pools, phaseName = "Poules Actuelles", phaseId = null, showRepeats = false) {
-        const poolsDisplay = document.getElementById('poolsDisplay');
-        const currentPhaseTitle = document.getElementById('currentPhaseTitle');
-        const scoreCounter = document.getElementById('scoreCounter');
-        if (!poolsDisplay || !currentPhaseTitle || !scoreCounter) return;
+function renderPools(pools, phaseName = "Poules Actuelles", phaseId = null, showRepeats = false) {
+    const poolsDisplay = document.getElementById('poolsDisplay');
+    const currentPhaseTitle = document.getElementById('currentPhaseTitle');
+    const scoreCounter = document.getElementById('scoreCounter');
+    if (!poolsDisplay || !currentPhaseTitle || !scoreCounter) return;
 
-        let totalMatches = 0;
-        let completedMatches = 0;
-        if (pools && Array.isArray(pools)) {
-            pools.forEach(pool => {
-                if (pool.matches && Array.isArray(pool.matches)) {
-                    totalMatches += pool.matches.length;
-                    pool.matches.forEach(match => {
-                        if (match.score1 !== null && match.score2 !== null && !isNaN(match.score1) && !isNaN(match.score2)) {
-                            completedMatches++;
-                        }
-                    });
-                }
-            });
-        }
-
-        currentPhaseTitle.textContent = 'Poules de ' + phaseName;
-
-        if (totalMatches > 0) {
-            scoreCounter.textContent = `Scores saisis : ${completedMatches} / ${totalMatches}`;
-        } else {
-            scoreCounter.textContent = '';
-        }
-
-        AppState.teamTournament.currentDisplayedPhaseId = phaseId;
-        poolsDisplay.innerHTML = '';
-
-        if (!pools || pools.length === 0) {
-            poolsDisplay.innerHTML = '<p class="text-gray-500 text-center md:col-span-2">Aucune poule générée pour cette phase.</p>';
-            return;
-        }
-
+    let totalMatches = 0;
+    let completedMatches = 0;
+    if (pools && Array.isArray(pools)) {
         pools.forEach(pool => {
-            const poolCard = document.createElement('div');
-            poolCard.className = 'bg-white p-4 rounded-lg shadow-md border border-gray-200';
-            let teamsListHtml = pool.teams.map(team => {
-                 const teamDetail = team.totalPoints !== undefined ? `Pts: ${team.totalPoints}, Diff: ${team.totalDiffScore}` : `Niveau ${team.level}`;
-                 return `<li>${escapeHtml(team.name)} (${teamDetail})</li>`;
-            }).join('');
-
-            let matchesHtml = '';
-            if (pool.matches && pool.matches.length > 0) {
-                matchesHtml = pool.matches.map((match, matchIndex) => {
-                    let team1Class = 'text-gray-700';
-                    let team2Class = 'text-gray-700';
-                    if (match.winnerId === match.team1Id) {
-                        team1Class = 'font-bold text-green-700';
-                        team2Class = 'text-red-700';
-                    } else if (match.winnerId === match.team2Id) {
-                        team2Class = 'font-bold text-green-700';
-                        team1Class = 'text-red-700';
+            if (pool.matches && Array.isArray(pool.matches)) {
+                totalMatches += pool.matches.length;
+                pool.matches.forEach(match => {
+                    if (match.score1 !== null && match.score2 !== null && !isNaN(match.score1) && !isNaN(match.score2)) {
+                        completedMatches++;
                     }
-                    const isRepeat = isMatchRepeated(match.team1Id, match.team2Id, phaseId);
-                    const repeatIndicatorHtml = isRepeat ? `<button class="repeated-match-indicator-btn text-red-500 font-bold ml-2 text-sm focus:outline-none ${showRepeats ? '' : 'hidden'}" data-team1-id="${match.team1Id}" data-team2-id="${match.team2Id}" data-team1-name="${escapeHtml(match.team1Name)}" data-team2-name="${escapeHtml(match.team2Name)}">(Répété)</button>` : '';
-                    return `
-                        <div class="flex flex-col sm:flex-row items-center justify-between p-2 border-b border-gray-200 last:border-b-0 space-y-2 sm:space-y-0 sm:space-x-2">
-                            <span data-team-role="team1-name" class="${team1Class} w-full sm:w-auto text-center sm:text-left">${escapeHtml(match.team1Name)}</span>
-                            <div class="flex items-center space-x-1">
-                                <select data-pool-id="${pool.id}" data-match-index="${matchIndex}" data-team="1" class="score-select w-20 p-1 border border-gray-300 rounded-md text-center text-sm">${generateScoreOptions(40, match.score1)}</select>
-                                <span class="text-gray-600">-</span>
-                                <select data-pool-id="${pool.id}" data-match-index="${matchIndex}" data-team="2" class="score-select w-20 p-1 border border-gray-300 rounded-md text-center text-sm">${generateScoreOptions(40, match.score2)}</select>
-                            </div>
-                            <span data-team-role="team2-name" class="${team2Class} w-full sm:w-auto text-center sm:text-right">${escapeHtml(match.team2Name)}</span>
-                            ${repeatIndicatorHtml}
-                        </div>`;
-                }).join('');
-            } else {
-                matchesHtml = '<p class="text-gray-500 text-sm mt-2">Aucune rencontre générée pour cette poule.</p>';
+                });
             }
-
-            poolCard.innerHTML = `<h3 class="text-xl font-semibold text-gray-800 mb-3">${escapeHtml(pool.name)}</h3><div class="mb-4"><h4 class="font-semibold text-gray-700 mb-2">Équipes:</h4><ul class="list-disc list-inside space-y-1 text-gray-700">${teamsListHtml}</ul></div><div class="mt-4 border-t border-gray-200 pt-4"><h4 class="font-semibold text-gray-700 mb-2">Rencontres:</h4>${matchesHtml}</div>`;
-            poolsDisplay.appendChild(poolCard);
-        });
-
-        poolsDisplay.querySelectorAll('.score-select').forEach(select => {
-            select.addEventListener('change', (event) => {
-                const poolId = event.target.dataset.poolId;
-                const matchIndex = parseInt(event.target.dataset.matchIndex);
-                const scoreSelects = event.target.closest('.flex.items-center.space-x-1').parentElement.querySelectorAll('.score-select');
-                let score1 = parseInt(scoreSelects[0].value);
-                let score2 = parseInt(scoreSelects[1].value);
-                if (isNaN(score1)) score1 = null;
-                if (isNaN(score2)) score2 = null;
-
-                const phase = AppState.teamTournament.allBrassagePhases.find(p => p.id === AppState.teamTournament.currentDisplayedPhaseId);
-                if (phase) {
-                    const pool = phase.pools.find(p => p.id === poolId);
-                    const match = pool.matches[matchIndex];
-                    match.score1 = score1;
-                    match.score2 = score2;
-                    match.winnerId = null;
-                    if (score1 !== null && score2 !== null) {
-                        if (score1 > score2) match.winnerId = match.team1Id;
-                        else if (score2 > score1) match.winnerId = match.team2Id;
-                    }
-
-                    saveAllData();
-                    renderPools(phase.pools, phase.name, phase.id, document.getElementById('toggleRepeatedMatchesDisplay').checked);
-                }
-            });
-        });
-
-        poolsDisplay.querySelectorAll('.repeated-match-indicator-btn').forEach(button => {
-            button.addEventListener('click', (event) => {
-                const { team1Id, team2Id, team1Name, team2Name } = event.currentTarget.dataset;
-                showRepeatedMatchDetailsModal(team1Name, team2Name, team1Id, team2Id, AppState.teamTournament.currentDisplayedPhaseId);
-            });
         });
     }
 
-    function renderPhaseHistory() {
+    currentPhaseTitle.textContent = 'Poules de ' + phaseName;
+
+    if (totalMatches > 0) {
+        scoreCounter.textContent = `Scores saisis : ${completedMatches} / ${totalMatches}`;
+    } else {
+        scoreCounter.textContent = '';
+    }
+
+    AppState.teamTournament.currentDisplayedPhaseId = phaseId;
+    poolsDisplay.innerHTML = '';
+
+    if (!pools || pools.length === 0) {
+        poolsDisplay.innerHTML = '<p class="text-gray-500 text-center md:col-span-2">Aucune poule générée pour cette phase.</p>';
+        return;
+    }
+
+    pools.forEach(pool => {
+        const poolCard = document.createElement('div');
+        poolCard.className = 'bg-white p-4 rounded-lg shadow-md border border-gray-200';
+        
+        let teamsListHtml = pool.teams.map(team => {
+             const teamDetail = team.totalPoints !== undefined ? `Pts: ${team.totalPoints}, Diff: ${team.totalDiffScore}` : `Niveau ${team.level}`;
+             return `<li>${escapeHtml(team.name)} (${teamDetail})</li>`;
+        }).join('');
+
+        let matchesHtml = '';
+        if (pool.matches && pool.matches.length > 0) {
+            matchesHtml = pool.matches.map((match, matchIndex) => {
+                let team1Class = 'text-gray-700';
+                let team2Class = 'text-gray-700';
+                if (match.winnerId === match.team1Id) {
+                    team1Class = 'font-bold text-green-700';
+                    team2Class = 'text-red-700';
+                } else if (match.winnerId === match.team2Id) {
+                    team2Class = 'font-bold text-green-700';
+                    team1Class = 'text-red-700';
+                }
+                const isRepeat = isMatchRepeated(match.team1Id, match.team2Id, phaseId);
+                const repeatIndicatorHtml = isRepeat ? `<button class="repeated-match-indicator-btn text-red-500 font-bold ml-2 text-sm focus:outline-none ${showRepeats ? '' : 'hidden'}" data-team1-id="${match.team1Id}" data-team2-id="${match.team2Id}" data-team1-name="${escapeHtml(match.team1Name)}" data-team2-name="${escapeHtml(match.team2Name)}">(Répété)</button>` : '';
+                return `
+                    <div class="flex flex-col sm:flex-row items-center justify-between p-2 border-b border-gray-200 last:border-b-0 space-y-2 sm:space-y-0 sm:space-x-2">
+                        <span data-team-role="team1-name" class="${team1Class} w-full sm:w-auto text-center sm:text-left">${escapeHtml(match.team1Name)}</span>
+                        <div class="flex items-center space-x-1">
+                            <select data-pool-id="${pool.id}" data-match-index="${matchIndex}" data-team="1" class="score-select w-20 p-1 border border-gray-300 rounded-md text-center text-sm">${generateScoreOptions(40, match.score1)}</select>
+                            <span class="text-gray-600">-</span>
+                            <select data-pool-id="${pool.id}" data-match-index="${matchIndex}" data-team="2" class="score-select w-20 p-1 border border-gray-300 rounded-md text-center text-sm">${generateScoreOptions(40, match.score2)}</select>
+                        </div>
+                        <span data-team-role="team2-name" class="${team2Class} w-full sm:w-auto text-center sm:text-right">${escapeHtml(match.team2Name)}</span>
+                        ${repeatIndicatorHtml}
+                    </div>`;
+            }).join('');
+        } else {
+            matchesHtml = '<p class="text-gray-500 text-sm mt-2">Aucune rencontre générée pour cette poule.</p>';
+        }
+
+        const arbitreLink = `${window.location.origin}${window.location.pathname}arbitre.html?tournoi=${AppState.auth.activeTeamTournamentId}&phase=${phaseId}&poule=${pool.id}`;
+
+        poolCard.innerHTML = `
+            <div class="flex justify-between items-start">
+                 <h3 class="text-xl font-semibold text-gray-800 mb-3">${escapeHtml(pool.name)}</h3>
+                 <button class="arbitre-link-btn text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded hover:bg-gray-300" data-link="${arbitreLink}">
+                     <i class="fas fa-link mr-1"></i> Lien Arbitre
+                 </button>
+            </div>
+            <div class="mb-4"><h4 class="font-semibold text-gray-700 mb-2">Équipes:</h4><ul class="list-disc list-inside space-y-1 text-gray-700">${teamsListHtml}</ul></div>
+            <div class="mt-4 border-t border-gray-200 pt-4"><h4 class="font-semibold text-gray-700 mb-2">Rencontres:</h4>${matchesHtml}</div>
+        `;
+        poolsDisplay.appendChild(poolCard);
+    });
+
+    poolsDisplay.querySelectorAll('.arbitre-link-btn').forEach(button => {
+        button.addEventListener('click', (event) => {
+            const link = event.currentTarget.dataset.link;
+            navigator.clipboard.writeText(link).then(() => {
+                showToast('Lien copié dans le presse-papiers !');
+            }, () => {
+                showToast('Erreur lors de la copie du lien.', 'error');
+            });
+            
+            const messageContent = document.createElement('div');
+            messageContent.innerHTML = `<p class="text-gray-700">Partagez ce lien avec l'arbitre de la poule :</p><input type="text" readonly class="w-full p-2 mt-2 bg-gray-100 border rounded" value="${link}">`;
+            
+            showModal('Lien de Saisie pour l\'Arbitre', messageContent, () => {}, false, false);
+            document.getElementById('modalConfirmBtn').textContent = 'OK';
+        });
+    });
+
+    poolsDisplay.querySelectorAll('.score-select').forEach(select => {
+        select.addEventListener('change', (event) => {
+            const poolId = event.target.dataset.poolId;
+            const matchIndex = parseInt(event.target.dataset.matchIndex);
+            const scoreSelects = event.target.closest('.flex.items-center.space-x-1').parentElement.querySelectorAll('.score-select');
+            let score1 = parseInt(scoreSelects[0].value);
+            let score2 = parseInt(scoreSelects[1].value);
+            if (isNaN(score1)) score1 = null;
+            if (isNaN(score2)) score2 = null;
+
+            const phase = AppState.teamTournament.allBrassagePhases.find(p => p.id === AppState.teamTournament.currentDisplayedPhaseId);
+            if (phase) {
+                const pool = phase.pools.find(p => p.id === poolId);
+                const match = pool.matches[matchIndex];
+                match.score1 = score1;
+                match.score2 = score2;
+                match.winnerId = null;
+                if (score1 !== null && score2 !== null) {
+                    if (score1 > score2) match.winnerId = match.team1Id;
+                    else if (score2 > score1) match.winnerId = match.team2Id;
+                }
+
+                saveAllData();
+                renderPools(phase.pools, phase.name, phase.id, document.getElementById('toggleRepeatedMatchesDisplay').checked);
+            }
+        });
+    });
+
+    poolsDisplay.querySelectorAll('.repeated-match-indicator-btn').forEach(button => {
+        button.addEventListener('click', (event) => {
+            const { team1Id, team2Id, team1Name, team2Name } = event.currentTarget.dataset;
+            showRepeatedMatchDetailsModal(team1Name, team2Name, team1Id, team2Id, AppState.teamTournament.currentDisplayedPhaseId);
+        });
+    });
+}
+	
+	function renderPhaseHistory() {
         const phaseHistoryDisplay = document.getElementById('phaseHistoryDisplay');
         if (!phaseHistoryDisplay) return;
 
@@ -3867,21 +3943,28 @@ const db = getFirestore(app);
                         }
                     }
 
-                    matchFrame.innerHTML = `
-                        <div class="match-teams w-full text-center">
-                            <div class="${team1Class}">${team1Name}</div>
-                            <div class="flex items-center justify-center gap-2 mt-1">
-                                <select data-match-id="${match.id}" data-team="1" class="team-score-select score-input w-20 p-1 border border-gray-300 rounded-md text-center text-sm" ${inputDisabled ? 'disabled' : ''}>
-                                    ${generateScoreOptions(40, match.score1)}
-                                </select>
-                                <span class="font-bold text-gray-700">-</span>
-                                <select data-match-id="${match.id}" data-team="2" class="team-score-select score-input w-20 p-1 border border-gray-300 rounded-md text-center text-sm" ${inputDisabled ? 'disabled' : ''}>
-                                    ${generateScoreOptions(40, match.score2)}
-                                </select>
-                            </div>
-                            <div class="${team2Class}">${team2Name}</div>
-                        </div>
-                    `;
+					const arbitreLink = `${window.location.origin}${window.location.pathname}arbitre.html?tournoi=${AppState.auth.activeTeamTournamentId}&groupe=${bracketData.groupType}&match=${match.id}`;
+
+					matchFrame.innerHTML = `
+						<div class="flex justify-end mb-2">
+							<button class="arbitre-link-btn text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded hover:bg-gray-300" data-link="${arbitreLink}">
+								<i class="fas fa-link mr-1"></i> Lien Arbitre
+							</button>
+						</div>
+						<div class="match-teams w-full text-center">
+							<div class="${team1Class}">${team1Name}</div>
+							
+							<div class="flex flex-col items-center gap-1 my-1">
+								<select data-match-id="${match.id}" data-team="1" class="team-score-select score-input w-20 p-1 border border-gray-300 rounded-md text-center text-sm" ${inputDisabled ? 'disabled' : ''}>
+									${generateScoreOptions(40, match.score1)}
+								</select>
+								<select data-match-id="${match.id}" data-team="2" class="team-score-select score-input w-20 p-1 border border-gray-300 rounded-md text-center text-sm" ${inputDisabled ? 'disabled' : ''}>
+									${generateScoreOptions(40, match.score2)}
+								</select>
+							</div>
+							<div class="${team2Class}">${team2Name}</div>
+						</div>
+					`;
                     roundDiv.appendChild(matchFrame);
                 });
                 bracketContainer.appendChild(roundDiv);
@@ -4136,12 +4219,31 @@ const db = getFirestore(app);
             window.location.hash = '#elimination-selection';
         });
 
-        eliminationBracketsDisplay.addEventListener('click', (event) => {
-            if (event.target.classList.contains('reset-group-btn')) {
-                const groupType = event.target.dataset.groupType;
-                resetGroupEliminationPhase(groupType);
-            }
-        });
+		eliminationBracketsDisplay.addEventListener('click', (event) => {
+			// Logique existante pour le bouton de réinitialisation
+			if (event.target.classList.contains('reset-group-btn')) {
+				const groupType = event.target.dataset.groupType;
+				resetGroupEliminationPhase(groupType);
+			}
+
+			// Logique pour le bouton "Lien Arbitre"
+			const arbitreBtn = event.target.closest('.arbitre-link-btn');
+			if (arbitreBtn) {
+				const link = arbitreBtn.dataset.link;
+				navigator.clipboard.writeText(link).then(() => {
+					showToast('Lien copié dans le presse-papiers !');
+				}, () => {
+					showToast('Erreur lors de la copie du lien.', 'error');
+				});
+				
+				const messageContent = document.createElement('div');
+				messageContent.innerHTML = `<p class="text-gray-700">Partagez ce lien avec l'arbitre du match :</p><input type="text" readonly class="w-full p-2 mt-2 bg-gray-100 border rounded" value="${link}">`;
+				
+				showModal('Lien de Saisie pour l\'Arbitre', messageContent, () => {}, false, false);
+				document.getElementById('modalConfirmBtn').textContent = 'OK';
+			}
+			
+		});
     }
 
     function renderClassementsPage() {
@@ -4597,5 +4699,6 @@ const db = getFirestore(app);
     window.getActiveTeamTournamentId = () => AppState.auth.activeTeamTournamentId;
     window.getActiveMeleeTournamentId = () => AppState.auth.activeMeleeTournamentId;
     window.getCurrentTournamentData = () => AppState.teamTournament.currentData;
+	window.loadTournamentDataById = fetchAndListenToTournamentData;
 
 })();
