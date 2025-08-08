@@ -2,21 +2,20 @@
 
 /**
  * L'algorithme principal pour générer des équipes et une seule rencontre par équipe.
+ * Cette version est agnostique au sexe des joueurs.
  * @returns {{teams: Array, matches: Array, exemptTeam: object|null}|{error: string}}
  */
 export function generateTeamsAndMatches({ allPlayers, existingRounds, numTeams }) {
-    // --- 1. & 2. Séparation par sexe et vérification de faisabilité ---
-    const men = allPlayers.filter(p => p.gender === 'Homme').sort((a, b) => b.level - a.level);
-    const women = allPlayers.filter(p => p.gender === 'Femme').sort((a, b) => b.level - a.level);
-
-    if (men.length < numTeams || women.length < numTeams) {
-        return { error: `Impossible de créer ${numTeams} équipes mixtes. Il faut au moins ${numTeams} hommes et ${numTeams} femmes.` };
+    // --- 1. Vérification de faisabilité (non basée sur le sexe) ---
+    // Il faut au moins 2 joueurs par équipe en moyenne pour commencer.
+    if (allPlayers.length < numTeams * 2) {
+        return { error: `Pas assez de joueurs (${allPlayers.length}) pour former ${numTeams} équipes de 2 ou plus.` };
     }
 
-    // --- 3. Création de l'historique des coéquipiers ---
+    // --- 2. Création de l'historique des coéquipiers (inchangé) ---
     const teammateHistory = new Map();
     existingRounds.forEach(round => {
-        if (!round.generated) return;
+        if (!round.generated || !round.teams) return;
         round.teams.forEach(team => {
             for (let i = 0; i < team.players.length; i++) {
                 for (let j = i + 1; j < team.players.length; j++) {
@@ -27,38 +26,49 @@ export function generateTeamsAndMatches({ allPlayers, existingRounds, numTeams }
         });
     });
 
-    // --- 4. & 5. Création, initialisation et distribution des joueurs dans les équipes ---
+    // --- 3. NOUVELLE LOGIQUE de répartition des joueurs (agnostique au sexe) ---
+    // Trier tous les joueurs par niveau, du plus fort au plus faible.
+    const playersToDistribute = [...allPlayers].sort((a, b) => b.level - a.level);
+
+    // Initialiser les équipes vides.
     let teams = Array.from({ length: numTeams }, () => ({ players: [], totalLevel: 0 }));
-    for (let i = 0; i < numTeams; i++) {
-        const man = men.shift();
-        const woman = women.shift();
-        teams[i].players.push(man, woman);
-        teams[i].totalLevel += man.level + woman.level;
-    }
-    const remainingPlayers = [...men, ...women].sort((a, b) => b.level - a.level);
-    
-    remainingPlayers.forEach(player => {
+
+    // Distribuer chaque joueur, un par un, dans la meilleure équipe possible.
+    playersToDistribute.forEach(player => {
         let bestTeamIndex = -1;
         let minCost = Infinity;
+
+        // Évaluer chaque équipe pour y placer le joueur actuel.
         teams.forEach((team, index) => {
-            if (team.players.length >= Math.ceil(allPlayers.length / numTeams)) return;
+            // Le coût est basé sur le niveau total actuel (on favorise les équipes de bas niveau).
             const levelCost = team.totalLevel;
+            
+            // On ajoute une forte pénalité pour chaque fois que le joueur a déjà été avec un des coéquipiers.
             let historyCost = 0;
             team.players.forEach(teammate => {
                 const key = [player.id, teammate.id].sort().join('-');
-                historyCost += (teammateHistory.get(key) || 0);
+                historyCost += (teammateHistory.get(key) || 0) * 100; // Forte pénalité pour éviter les doublons
             });
-            const totalCost = levelCost + (historyCost * 10);
+
+            // Le coût total combine le niveau et l'historique.
+            const totalCost = levelCost + historyCost;
+
             if (totalCost < minCost) {
                 minCost = totalCost;
                 bestTeamIndex = index;
             }
         });
-        if (bestTeamIndex === -1) {
-            bestTeamIndex = teams.findIndex(t => t.players.length < Math.ceil(allPlayers.length / numTeams));
+        
+        // Placer le joueur dans l'équipe la moins "coûteuse" trouvée.
+        if (bestTeamIndex !== -1) {
+             teams[bestTeamIndex].players.push(player);
+             teams[bestTeamIndex].totalLevel += player.level;
+        } else {
+            // Fallback au cas où (ne devrait pas arriver), on le met dans l'équipe la plus vide.
+            teams.sort((a, b) => a.players.length - b.players.length);
+            teams[0].players.push(player);
+            teams[0].totalLevel += player.level;
         }
-        teams[bestTeamIndex].players.push(player);
-        teams[bestTeamIndex].totalLevel += player.level;
     });
 
     const finalTeams = teams.map((team, index) => ({
@@ -68,7 +78,7 @@ export function generateTeamsAndMatches({ allPlayers, existingRounds, numTeams }
         totalLevel: team.totalLevel
     }));
 
-    // --- 6. NOUVELLE LOGIQUE DE GÉNÉRATION DES RENCONTRES (1 par équipe) ---
+    // --- 4. Génération des rencontres (inchangé) ---
     const matches = [];
     let exemptTeam = null;
     
