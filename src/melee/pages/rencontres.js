@@ -7,6 +7,25 @@ import { generateTeamsAndMatches } from '../shared/generation.js';
 const APP_CONTAINER = document.getElementById('app-container');
 let selectedPhaseId = null;
 
+/**
+ * Retourne le symbole correspondant au genre du joueur.
+ * @param {string} gender - Le genre ('Homme', 'Femme', 'Autre').
+ * @returns {string} Le symbole HTML correspondant.
+ */
+function getGenderSymbol(gender) {
+    switch (gender) {
+        case 'Homme':
+            // On combine le gras avec un contour bleu foncé
+            return '<span style="color: #3b82f6; font-weight: bold; -webkit-text-stroke: 1.5px #2563eb;">♂</span>';
+        case 'Femme':
+            // On combine le gras avec un contour rose foncé
+            return '<span style="color: #ec4899; font-weight: bold; -webkit-text-stroke: 1.5px #be185d;">♀</span>';
+        default:
+            // On combine le gras avec un contour gris
+            return '<span style="font-weight: bold; -webkit-text-stroke: 0.5px #6b7280;">⚪</span>';
+    }
+}
+
 
 export function render() {
     const isLoggedIn = !!window.userId;
@@ -114,7 +133,7 @@ function renderPhaseDetails(phaseId) {
         return;
     }
     
-    let content = `<h3 class="text-2xl font-semibold text-gray-700 mb-4">Composition des équipes et rencontres de la <b>${phase.name}</b></h3>`;
+    let content = `<h3 class="text-2xl font-semibold text-gray-700 mb-4">Composition des équipes et rencontres de la ${phase.name}</h3>`;
 
     if (!phase.generated) {
         content += `<p class="text-center text-gray-500">Cliquez sur "Générer" pour créer les équipes et rencontres de cette phase.</p>`;
@@ -142,7 +161,7 @@ function renderPhaseDetails(phaseId) {
                         <div class="md:col-span-3 bg-white p-3 rounded-md border-2 shadow-sm ${team1Style}">
                             <h5 class="font-bold text-teal-700">${team1.name} (Niveau: ${team1.totalLevel})</h5>
                             <ul class="text-sm list-disc list-inside ml-1 text-left mt-2">
-                                ${team1.players.map(p => `<li class="player-swap-trigger p-1 rounded hover:bg-teal-100 cursor-pointer" data-player-id="${p.id}" data-team-id="${team1.id}" data-phase-id="${phase.id}">${p.firstName} ${p.lastName} (${p.gender.charAt(0)}, N${p.level})</li>`).join('')}
+                                ${team1.players.map(p => `<li class="player-swap-trigger p-1 rounded hover:bg-teal-100 cursor-pointer" data-player-id="${p.id}" data-team-id="${team1.id}" data-phase-id="${phase.id}">${p.firstName} ${p.lastName} (${getGenderSymbol(p.gender)}, N${p.level})</li>`).join('')}
                             </ul>
                         </div>
                         
@@ -155,7 +174,7 @@ function renderPhaseDetails(phaseId) {
                         <div class="md:col-span-3 bg-white p-3 rounded-md border-2 shadow-sm ${team2Style}">
                             <h5 class="font-bold text-teal-700">${team2.name} (Niveau: ${team2.totalLevel})</h5>
                             <ul class="text-sm list-disc list-inside ml-1 text-left mt-2">
-                                ${team2.players.map(p => `<li class="player-swap-trigger p-1 rounded hover:bg-teal-100 cursor-pointer" data-player-id="${p.id}" data-team-id="${team2.id}" data-phase-id="${phase.id}">${p.firstName} ${p.lastName} (${p.gender.charAt(0)}, N${p.level})</li>`).join('')}
+                                ${team2.players.map(p => `<li class="player-swap-trigger p-1 rounded hover:bg-teal-100 cursor-pointer" data-player-id="${p.id}" data-team-id="${team2.id}" data-phase-id="${phase.id}">${p.firstName} ${p.lastName} (${getGenderSymbol(p.gender)}, N${p.level})</li>`).join('')}
                             </ul>
                         </div>
                     </div>
@@ -168,7 +187,7 @@ function renderPhaseDetails(phaseId) {
                          <div class="bg-white p-3 rounded-md border shadow-sm max-w-md mx-auto">
                             <h5 class="font-bold text-gray-600">${phase.exemptTeam.name} (Niveau: ${phase.exemptTeam.totalLevel})</h5>
                             <ul class="text-sm list-disc list-inside ml-1">
-                               ${phase.exemptTeam.players.map(p => `<li>${p.firstName} ${p.lastName} (${p.gender.charAt(0)}, N${p.level})</li>`).join('')}
+                               ${phase.exemptTeam.players.map(p => `<li>${p.firstName} ${p.lastName} (${getGenderSymbol(p.gender)}, N${p.level})</li>`).join('')}
                             </ul>
                         </div>
                     </div>
@@ -180,10 +199,10 @@ function renderPhaseDetails(phaseId) {
     detailsDiv.innerHTML = content;
     
     if (phase.generated) {
-        // On remplace l'appel à attachScoreListeners() par notre nouvelle fonction
         attachPhaseDetailsListeners(phaseId);
     }
 }
+
 
 /**
  * Attache tous les écouteurs nécessaires pour les détails d'une phase (scores et échange de joueurs).
